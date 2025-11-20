@@ -1,0 +1,27 @@
+{
+  "speaker_name": "Aaron",
+  "device_index": 7,
+  "channel_indices": [0],
+  "session_storage": {
+    "directory": "sessions",
+    "auto_save": true,
+    "save_on_shutdown": true
+  },
+  "display": {
+    "max_visible_lines": 20,
+    "line_spacing": "single"
+  },
+  "analysis_settings": {
+    "low_confidence_threshold": 0.5,
+    "end_of_turn_confidence_threshold": 0.4,
+    "min_end_of_turn_silence_when_confident": 800,
+    "max_turn_silence": 1500
+  },
+  "auto_analysis": {
+    "enabled": true,
+    "generate_html_report": true,
+    "auto_export_student": false,
+    "student_export_format": "markdown"
+  },
+  "app_name": "Semantic Surfer"
+}

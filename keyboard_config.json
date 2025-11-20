@@ -1,0 +1,28 @@
+{
+  "description": "Keyboard bindings for ESL transcript viewer - Edit this file to customize!",
+  "bindings": {
+    "pause_resume": " ",
+    "mark_front": "Numpad7",
+    "mark_all": "Numpad8",
+    "mark_back": "Numpad9",
+    "navigate_up": "ArrowUp",
+    "navigate_down": "ArrowDown",
+    "clear_mark": "Numpad5",
+    "export_session": "e"
+  },
+  "notes": {
+    "pause_resume": "Toggle pause/resume stream (default: Spacebar)",
+    "mark_front": "Mark front portion of selected line",
+    "mark_all": "Mark entire selected line",
+    "mark_back": "Mark back portion of selected line",
+    "navigate_up": "Move selection up one line",
+    "navigate_down": "Move selection down one line",
+    "clear_mark": "Remove mark from selected line",
+    "export_session": "Export current session to JSON"
+  },
+  "alternative_suggestions": {
+    "pause_resume_options": ["p", "Escape", "F1", "Backquote"],
+    "mark_options": ["1", "2", "3", "q", "w", "e", "a", "s", "d"],
+    "navigation_options": ["j", "k", "h", "l", "w", "s"]
+  }
+}

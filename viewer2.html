@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Semantic Surfer</title>
+    
+    <!-- React & Framer Motion -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Font: JetBrains Mono (Professional Coding/Terminal Font) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+        <style>
+        /* --- USER PROVIDED STYLE --- */
+            :root {
+            --border-radius-500: 8px;
+            --color-on-background: #f0f0f0; /* Brighter White */
+            --fonts-primary: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+            --bg-color: #050505; /* Deepest Black */
+            --panel-bg: #111;
+            
+            /* NEON PALETTE */
+            --neon-blue: #00f3ff;
+            --neon-green: #0aff60;
+            --neon-pink: #ff0099;
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+                box-sizing: border-box;
+            }
+
+            body {
+            background-color: var(--bg-color);
+            font-family: var(--fonts-primary);
+            font-size: 15px; /* Bumped up for readability */
+            margin: 0;
+            min-height: 100vh;
+            color: var(--color-on-background);
+            overflow-x: hidden;
+        }
+
+        .layout__wrapper {
+                background: var(--bg-color);
+            margin: 0;
+            max-width: 100vw; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .layout__header {
+            flex-shrink: 0;
+            background: rgba(10, 10, 10, 0.9);
+            border-bottom: var(--glass-border);
+            backdrop-filter: blur(10px);
+        }
+
+        .app-bar {
+                display: flex;
+            justify-content: space-between;
+                align-items: center;
+            padding: 0 1.5rem 0 5rem; /* Added 5rem padding-left for macOS traffic lights */
+            height: 60px;
+                -webkit-app-region: drag;
+        }
+
+        .app-bar__title {
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); /* Subtle Glow */
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-indicator {
+            font-size: 0.75rem;
+            font-weight: normal;
+                padding: 2px 8px;
+                border-radius: 4px;
+            letter-spacing: 0;
+            text-shadow: none;
+            opacity: 0.8;
+        }
+        .status-indicator.connected { color: var(--neon-green); border: 1px solid rgba(10, 255, 96, 0.3); box-shadow: 0 0 5px rgba(10, 255, 96, 0.2); }
+        .status-indicator.disconnected { color: #ff4444; border: 1px solid rgba(255, 68, 68, 0.3); }
+
+        .app-bar__actions {
+            display: flex;
+            gap: 12px;
+            -webkit-app-region: no-drag;
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.05);
+            border: var(--glass-border);
+            color: #ccc;
+            padding: 6px 14px;
+                border-radius: 4px;
+                cursor: pointer;
+            font-size: 0.8rem;
+            font-family: var(--fonts-primary);
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn-action:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+        }
+        select.btn-action {
+            appearance: none;
+            padding-right: 30px;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23CCCCCC%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px top 50%;
+            background-size: 10px auto;
+        }
+
+        /* OVERVIEW LAYOUT */
+        .overview-container {
+                display: flex;
+            flex-direction: row;
+            gap: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        .holder {
+                display: flex;
+                flex-direction: column;
+            background: var(--bg-color);
+            border-right: var(--glass-border);
+            height: 100%;
+        }
+        
+        /* Column Widths */
+        .holder.live-transcript {
+            flex: 7; /* 70% Width */
+        }
+        .holder.marked-list {
+            flex: 3; /* 30% Width */
+            min-width: 200px;
+            background: #080808; /* Slightly darker */
+        }
+        
+        .holder:last-child { border-right: none; }
+
+        .holder__title {
+            background-color: rgba(255, 255, 255, 0.02);
+            border-bottom: var(--glass-border);
+            color: var(--neon-blue); /* Radio Neon Blue */
+            font-weight: 700;
+            font-size: 0.85rem;
+            padding: 1rem 1.5rem;
+                text-transform: uppercase;
+            letter-spacing: 1.5px;
+            text-shadow: 0 0 8px rgba(0, 243, 255, 0.4); /* Blue Glow */
+            flex-shrink: 0;
+        }
+
+        .holder--tint-2 .holder__title {
+            color: var(--neon-pink); /* Marked items get Pink */
+            text-shadow: 0 0 8px rgba(255, 0, 153, 0.4);
+        }
+        
+        .holder__content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* CHAT BUBBLE STYLING */
+        .list__item {
+            margin-bottom: 1.5rem;
+            display: flex;
+            width: 100%;
+            transition: all 0.3s ease-out; /* Smooth snap animation */
+        }
+
+        /* Default: Center (Neutral/Listening) */
+        .list__item.center {
+            justify-content: center;
+        }
+        /* Left (Student) */
+        .list__item.left {
+            justify-content: flex-start;
+        }
+        /* Right (Tutor) */
+        .list__item.right {
+            justify-content: flex-end;
+        }
+
+        .bubble-container {
+            max-width: 85%;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .list__item.right .bubble-container {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+                display: flex;
+            align-items: center;
+                justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            color: #000;
+            flex-shrink: 0;
+            opacity: 0; /* Hidden by default, fades in */
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+        
+        /* Show avatar only when snapped to side */
+        .list__item.left .avatar,
+        .list__item.right .avatar {
+                opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Tutor Avatar (Right) */
+        .avatar.tutor {
+            background: var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+        }
+        /* Student Avatar (Left) */
+        .avatar.student {
+            background: var(--neon-green);
+            box-shadow: 0 0 10px rgba(10, 255, 96, 0.4);
+        }
+
+        .chat-bubble {
+            padding: 12px 18px;
+            border-radius: 18px;
+            position: relative;
+            color: #fff;
+            font-size: 1rem;
+            line-height: 1.5;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-origin: center bottom;
+        }
+
+        /* --- STAIRCASE HOVER EFFECT --- */
+        /* When hovering a bubble, scale it up significantly */
+        .list__item:hover .chat-bubble {
+            transform: scale(1.15);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Scale up the previous sibling slightly */
+        .list:has(.list__item:hover) .list__item:hover + .list__item .chat-bubble {
+            transform: scale(1.05);
+            opacity: 0.8;
+        }
+        
+        /* Scale up the next sibling slightly (using :has to look ahead) */
+        .list__item:has(+ .list__item:hover) .chat-bubble {
+            transform: scale(1.05);
+            opacity: 0.8;
+        }
+        /* ----------------------------- */
+
+        /* Center Bubble (Neutral) */
+        .chat-bubble.center {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+            border-radius: 18px; /* Fully rounded when center */
+            color: #aaa;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        /* Left Bubble (Student) */
+        .chat-bubble.left {
+            background: rgba(10, 255, 96, 0.1); /* Green Tint */
+            border-bottom-left-radius: 4px;
+            border-color: rgba(10, 255, 96, 0.3);
+            color: #eee;
+        }
+        /* Right Bubble (Tutor) */
+        .chat-bubble.right {
+            background: rgba(0, 243, 255, 0.1); /* Blue Tint */
+            border-bottom-right-radius: 4px;
+            border-color: rgba(0, 243, 255, 0.3);
+            color: #eee;
+        }
+
+        .chat-bubble:hover {
+            background: rgba(255,255,255,0.1);
+            cursor: pointer;
+        }
+        
+        /* PARTIAL TEXT (Italic but READABLE) */
+        .chat-bubble.partial {
+            color: #bbb; 
+            font-style: italic;
+            border-style: dashed;
+            opacity: 0.8;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 5px; border: 2px solid #0a0a0a; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        </style>
+    </head>
+    <body>
+    <div id="error-display" style="color: red; padding: 20px; font-family: monospace; white-space: pre-wrap; display: none; background: rgba(0,0,0,0.8); position: fixed; top: 0; left: 0; right: 0; z-index: 9999;"></div>
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            const div = document.getElementById('error-display');
+            div.style.display = 'block';
+            div.textContent = `ERROR: ${msg}\nLine: ${line}:${col}\n${error ? error.stack : ''}`;
+            return false;
+        };
+    </script>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- SAFE GLOBAL ACCESS ---
+        const { createContext, useContext, useEffect, useRef, useState, useCallback } = React;
+        
+        // Handle Framer Motion Global Name (sometimes 'Motion', sometimes 'framerMotion')
+        const MotionObj = window.Motion || window.framerMotion;
+        if (!MotionObj) {
+            throw new Error("Framer Motion library not loaded properly. Check internet connection or CDN link.");
+        }
+        const { motion, useMotionValue } = MotionObj;
+
+        // Initial State
+        const INITIAL_DATA = [
+            {
+                id: 'live',
+                label: 'Raw Stream',
+                items: [], // Will be populated by WebSocket
+                tint: 1,
+            },
+            {
+                id: 'marked',
+                label: 'Marked for Review',
+                items: [],
+                tint: 2,
+            }
+        ];
+
+        function App() {
+            const [studentName, setStudentName] = useState("Unknown");
+            const [connectionStatus, setConnectionStatus] = useState("Disconnected");
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [existingStudents, setExistingStudents] = useState([]);
+            const [isHelpOpen, setIsHelpOpen] = useState(false); // Help Modal State
+
+            // Handle global events for data coming from Overview/WS
+            useEffect(() => {
+                const handleStudentList = (e) => {
+                    setExistingStudents(e.detail);
+                };
+                const handleShowHelp = () => setIsHelpOpen(true);
+
+                window.addEventListener('UPDATE_STUDENT_LIST', handleStudentList);
+                window.addEventListener('SHOW_HELP', handleShowHelp);
+                return () => {
+                    window.removeEventListener('UPDATE_STUDENT_LIST', handleStudentList);
+                    window.removeEventListener('SHOW_HELP', handleShowHelp);
+                };
+            }, []);
+
+            const handleSelectStudent = (e) => {
+                const name = e.target.value;
+                if (name && name !== "select-student") {
+                    setStudentName(name);
+                    // Trigger a profile update event that Overview will catch
+                    window.dispatchEvent(new CustomEvent('SWITCH_PROFILE', { detail: name }));
+                }
+            };
+
+            return (
+                <div className='layout__wrapper'>
+                    <div className='layout__header'>
+                        <div className='app-bar'>
+                            <div className='app-bar__title'>
+                                Semantic Surfer
+                                <span className={`status-indicator ${connectionStatus === 'Connected' ? 'connected' : 'disconnected'}`}>
+                                    {connectionStatus === 'Connected' ? 'ON AIR' : 'OFFLINE'}
+                                </span>
+                                <span style={{opacity:0.5, fontSize:'0.8em', fontWeight:'normal'}}>// {studentName}</span>
+        </div>
+                            <div className='app-bar__actions'>
+                                <select 
+                                    className='btn-action' 
+                                    onChange={handleSelectStudent}
+                                    value="select-student"
+                                    style={{appearance: 'none', paddingRight: '20px', height:'26px'}}
+                                >
+                                    <option value="select-student" disabled>Select Student...</option>
+                                    {existingStudents.map(s => (
+                                        <option key={s} value={s}>{s}</option>
+                                    ))}
+                                </select>
+                                <button className='btn-action' onClick={() => setIsModalOpen(true)} title="Create a new student profile">New Student</button>
+                                <button className='btn-action' onClick={() => window.dispatchEvent(new CustomEvent('TRIGGER_EXPORT'))} title="Download Session JSON">Export</button>
+                                <button className='btn-action' onClick={() => window.dispatchEvent(new CustomEvent('SHOW_HELP'))} title="How to use">Help</button>
+            </div>
+            </div>
+        </div>
+
+                    <Overview 
+                        setStudentName={setStudentName} 
+                        setConnectionStatus={setConnectionStatus}
+                        studentName={studentName}
+                        isModalOpen={isModalOpen}
+                        setIsModalOpen={setIsModalOpen}
+                    />
+                    <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+                </div>
+            );
+        }
+
+        function HelpModal({ isOpen, onClose }) {
+            if (!isOpen) return null;
+            return (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000
+                }} onClick={onClose}>
+                    <div style={{
+                        background: '#161616', padding: '30px', borderRadius: '12px',
+                        width: '600px', maxWidth: '90vw', border: '1px solid #333', boxShadow: '0 20px 50px black',
+                        color: '#ddd', lineHeight: '1.6'
+                    }} onClick={e => e.stopPropagation()}>
+                        <h2 style={{marginTop:0, color:'#fff'}}>How to Use Semantic Surfer</h2>
+                        <ul style={{paddingLeft: '20px'}}>
+                            <li style={{marginBottom:'10px'}}><strong>🎙️ Live Transcription:</strong> Speak into your microphone. Your voice (Aaron) appears on the RIGHT. The student appears on the LEFT.</li>
+                            <li style={{marginBottom:'10px'}}><strong>🔍 Analyze:</strong> Click ANY student bubble (Left side) to analyze it with AI.</li>
+                            <li style={{marginBottom:'10px'}}><strong>✨ Create Cards:</strong> The AI will suggest a category and correction. Edit it if needed, then click "Save Card".</li>
+                            <li style={{marginBottom:'10px'}}><strong>💾 Saving:</strong> Saved cards are sent to Sanity.io and appear in the "Marked Items" list on the right for reference.</li>
+                            <li style={{marginBottom:'10px'}}><strong>👤 Profiles:</strong> Use the dropdown or "New Student" button to switch profiles. This tags the data correctly.</li>
+                        </ul>
+                        <div style={{textAlign:'right', marginTop:'20px'}}>
+                            <button className="btn-action" onClick={onClose} style={{background:'#00f3ff', color:'#000', fontWeight:'bold'}}>Got it</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AnalysisModal({ isOpen, onClose, onSave, initialData, isLoading }) {
+            const [formData, setFormData] = useState({
+                category: 'VOCAB_GAP',
+                suggestedCorrection: '',
+                explanation: '',
+                detectedTrigger: ''
+            });
+
+            // Populate form when data arrives
+            useEffect(() => {
+                if (initialData) {
+                    setFormData(prev => ({
+                        ...prev,
+                        detectedTrigger: initialData.detectedTrigger || prev.detectedTrigger,
+                        category: initialData.category || 'VOCAB_GAP',
+                        suggestedCorrection: initialData.suggestedCorrection || '',
+                        explanation: initialData.explanation || ''
+                    }));
+                }
+            }, [initialData]);
+
+            if (!isOpen) return null;
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+
+            return (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000
+                }}>
+                    <div style={{
+                        background: '#161616', padding: '25px', borderRadius: '12px',
+                        width: '500px', maxWidth: '90vw', border: '1px solid #333', boxShadow: '0 20px 50px black'
+                    }}>
+                        <h3 style={{marginTop: 0, color: '#fff', fontSize:'1.1rem', marginBottom: '20px'}}>
+                            Create Analysis Card
+                        </h3>
+
+                        {isLoading ? (
+                            <div style={{color: '#888', textAlign: 'center', padding: '40px'}}>
+                                Analyzing with AssemblyAI...
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{marginBottom: '15px'}}>
+                                    <label style={{display:'block', color:'#888', fontSize:'0.8rem', marginBottom:'5px'}}>Student Said</label>
+                                    <div style={{padding: '10px', background: '#222', borderRadius: '6px', color: '#fff', fontStyle: 'italic'}}>
+                                        "{formData.detectedTrigger}"
+                                    </div>
+                                </div>
+
+                                <div style={{marginBottom: '15px'}}>
+                                    <label style={{display:'block', color:'#888', fontSize:'0.8rem', marginBottom:'5px'}}>Category</label>
+                                    <select 
+                                        name="category" 
+                                        value={formData.category} 
+                                        onChange={handleChange}
+                                        style={{width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '4px'}}
+                                    >
+                                        <option value="VOCAB_GAP">Vocabulary Gap</option>
+                                        <option value="GRAMMAR_ERR">Grammar Error</option>
+                                        <option value="RECAST">Recast</option>
+                                        <option value="AVOIDANCE">Avoidance</option>
+                                        <option value="PRONUNCIATION">Pronunciation</option>
+                                    </select>
+                                </div>
+
+                                <div style={{marginBottom: '15px'}}>
+                                    <label style={{display:'block', color:'#888', fontSize:'0.8rem', marginBottom:'5px'}}>Correction</label>
+                                    <input 
+                                        name="suggestedCorrection" 
+                                        value={formData.suggestedCorrection} 
+                                        onChange={handleChange}
+                                        style={{width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '4px'}}
+                                    />
+                                </div>
+
+                                <div style={{marginBottom: '20px'}}>
+                                    <label style={{display:'block', color:'#888', fontSize:'0.8rem', marginBottom:'5px'}}>Explanation</label>
+                                    <textarea 
+                                        name="explanation" 
+                                        value={formData.explanation} 
+                                        onChange={handleChange}
+                                        rows={3}
+                                        style={{width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '4px', resize: 'vertical'}}
+                                    />
+                                </div>
+
+                                <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end'}}>
+                                    <button className="btn-action" onClick={onClose} style={{background:'transparent', border:'none'}}>Cancel</button>
+                                    <button className="btn-action" onClick={() => onSave(formData)} style={{background: '#00f3ff', borderColor:'#00f3ff', color:'#000', fontWeight: 'bold'}}>Save Card</button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function Modal({ isOpen, onClose, onSave }) {
+            const [inputValue, setInputValue] = useState("");
+            const inputRef = useRef(null);
+
+            useEffect(() => {
+                if (isOpen && inputRef.current) {
+                    inputRef.current.focus();
+                }
+            }, [isOpen]);
+
+            if (!isOpen) return null;
+
+            return (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000
+                }}>
+                    <div style={{
+                        background: '#161616', padding: '20px', borderRadius: '8px',
+                        minWidth: '300px', border: '1px solid #333', boxShadow: '0 10px 25px black'
+                    }}>
+                        <h3 style={{marginTop: 0, color: '#e0e0e0', fontWeight:'normal', fontSize:'1rem'}}>New Student Profile</h3>
+                        <input 
+                            ref={inputRef}
+                            style={{
+                                width: '100%', padding: '10px', marginBottom: '15px',
+                                background: '#0a0a0a', border: '1px solid #333',
+                                color: '#e0e0e0', borderRadius: '4px', fontFamily: 'inherit'
+                            }}
+                            placeholder="Enter name..."
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && onSave(inputValue)}
+                        />
+                        <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end'}}>
+                            <button className="btn-action" onClick={onClose} style={{background:'transparent', border:'none'}}>Cancel</button>
+                            <button className="btn-action" onClick={() => onSave(inputValue)} style={{background: '#238636', borderColor:'#238636', color:'white'}}>Create Profile</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function Overview({ setStudentName, setConnectionStatus, studentName, isModalOpen, setIsModalOpen }) {
+            const [items, setItems] = useState(INITIAL_DATA);
+            const [ws, setWs] = useState(null);
+            const itemsRef = useRef(INITIAL_DATA);
+            
+            // Analysis Modal State
+            const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+            const [analysisLoading, setAnalysisLoading] = useState(false);
+            const [currentAnalysisData, setCurrentAnalysisData] = useState(null);
+            const [pendingCardItem, setPendingCardItem] = useState(null); // The item being analyzed
+
+            // Keyboard Shortcuts for Quick Marking
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    // Ignore if typing in an input
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+                    const keyMap = {
+                        '1': 'VOCAB_GAP',
+                        '2': 'GRAMMAR_ERR',
+                        '3': 'PRONUNCIATION',
+                        '4': 'RECAST',
+                        '5': 'AVOIDANCE'
+                    };
+
+                    // Check for Numpad keys (Numpad1, etc.) or standard number keys
+                    const key = e.code.replace('Numpad', '').replace('Digit', '');
+                    const category = keyMap[key];
+
+                    if (category) {
+                        // Find the LAST COMPLETE student item
+                        // We traverse backwards from the end of live list
+                        const liveList = itemsRef.current[0].items;
+                        let targetItem = null;
+                        
+                        for (let i = liveList.length - 1; i >= 0; i--) {
+                            const item = liveList[i];
+                            // Must not be partial, must not be Tutor (right side)
+                            const isTutor = item.speaker && (item.speaker.includes("Aaron") || item.speaker === "A");
+                            if (!item.isPartial && !isTutor) {
+                                targetItem = item;
+                                break;
+                            }
+                        }
+
+                        if (targetItem) {
+                            // Trigger Analysis Flow
+                            handleCardClick(targetItem, category);
+                        }
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, []);
+
+            // Ref sync
+            useEffect(() => {
+                itemsRef.current = items;
+            }, [items]);
+
+            // WebSocket Logic
+            useEffect(() => {
+                const socket = new WebSocket("ws://localhost:8765");
+                setWs(socket);
+
+                socket.onopen = () => {
+                    setConnectionStatus("Connected");
+                };
+                socket.onclose = () => setConnectionStatus("Disconnected");
+                socket.onerror = () => setConnectionStatus("Error");
+
+                socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.message_type === "partial") {
+                        handlePartial(data.text);
+                    } else if (data.message_type === "transcript") {
+                        handleFinal(data);
+                    } else if (data.message_type === "student_list") {
+                        window.dispatchEvent(new CustomEvent('UPDATE_STUDENT_LIST', { detail: data.students }));
+                    } else if (data.message_type === "analysis_result") {
+                        // Handle AI Analysis Result
+                        setAnalysisLoading(false);
+                        setCurrentAnalysisData(prev => {
+                            // If we already have a category set (e.g. from Numpad shortcut), PRESERVE IT.
+                            // Only use AI category if we defaulted to 'VOCAB_GAP' (or if we want AI to override? 
+                            // User preference: Numpad is explicit intent. Keep it.)
+                            
+                            const userIntentCategory = prev.category;
+                            const aiCategory = data.result.category;
+                            
+                            // Simple logic: If user pressed a key, prev.category might differ from default.
+                            // But handleCardClick sets default to VOCAB_GAP.
+                            // Let's just prioritize the AI's correction/explanation, but maybe keep the category 
+                            // if the user *just* pressed it? 
+                            // Actually, AI might detect 'GRAMMAR_ERR' when user pressed '1' (Vocab).
+                            // Let's trust the AI for the text fields, but if the user explicitly opened it via shortcut,
+                            // maybe we should respect that? 
+                            // For now, let's just fill in the missing pieces.
+                            
+                            return {
+                                ...prev,
+                                ...data.result, // This overwrites category.
+                                category: userIntentCategory && userIntentCategory !== 'VOCAB_GAP' ? userIntentCategory : data.result.category,
+                                detectedTrigger: prev.detectedTrigger
+                            };
+                        });
+                    }
+                };
+                
+                const handlePartial = (text) => {
+                    setItems(prev => {
+                        const newItems = [...prev];
+                        const liveList = [...newItems[0].items];
+                        const lastItem = liveList[liveList.length - 1];
+                        
+                        // For partials, we assume last speaker or default to Left (Student) if unknown
+                        // Or maybe we can't know yet, so keep it neutral? 
+                        // Let's assume partials update the LAST bubble if it exists.
+                        
+                        if (lastItem && lastItem.isPartial) {
+                            liveList[liveList.length - 1] = { ...lastItem, text: text + "..." };
+                        } else {
+                            // New partial bubble
+                            // We default to Student (Left) until we know otherwise? 
+                            // Or better: Create a temp bubble that is 'neutral'.
+                            // For now, let's default to Left/Student.
+                            liveList.push({ 
+                                id: 'temp-' + Date.now(), 
+                                text: text + "...", 
+                                isPartial: true,
+                                speaker: null 
+                            });
+                        }
+                        newItems[0] = { ...newItems[0], items: liveList };
+                        return newItems;
+                    });
+                };
+
+                const handleFinal = (data) => {
+                    setItems(prev => {
+                        const newItems = [...prev];
+                        const liveList = [...newItems[0].items];
+                        if (liveList.length > 0 && liveList[liveList.length - 1].isPartial) {
+                            liveList.pop();
+                        }
+                        
+                        // Determine Side based on Speaker
+                        // Logic: Aaron/Tutor -> Right. Everyone else -> Left.
+                        let speaker = data.speaker || "Unknown";
+                        // We need to detect if it's Aaron.
+                        // main.py sends the literal string from config if speaker is not detected, OR 'A'/'B'.
+                        
+                        // Store structured data
+                        liveList.push({ 
+                            id: 'turn-' + data.turn_order, 
+                            text: data.text, 
+                            speaker: speaker,
+                            isPartial: false, 
+                            fullData: data 
+                        });
+                        
+                        newItems[0] = { ...newItems[0], items: liveList };
+                        return newItems;
+                    });
+                };
+
+                return () => socket.close();
+            }, []);
+
+            // Listen for Export and Profile Switch
+            useEffect(() => {
+                const handleExport = () => {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(itemsRef.current, null, 2));
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute("href", dataStr);
+                    
+                    // Sanitized filename: StudentName-session-Timestamp.json
+                    const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    downloadAnchorNode.setAttribute("download", `${safeName}-session-${Date.now()}.json`);
+                    
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                };
+
+                const handleSwitchProfile = (e) => {
+                    const name = e.detail;
+                    if (name) {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                message_type: "update_profile",
+                                student_name: name
+                            }));
+                        }
+                        setItems(prev => [
+                            { ...prev[0], items: [] },
+                            { ...prev[1], items: [] }
+                        ]);
+                    }
+                };
+
+                window.addEventListener('TRIGGER_EXPORT', handleExport);
+                window.addEventListener('SWITCH_PROFILE', handleSwitchProfile);
+                return () => {
+                    window.removeEventListener('TRIGGER_EXPORT', handleExport);
+                    window.removeEventListener('SWITCH_PROFILE', handleSwitchProfile);
+                };
+            }, [ws]);
+
+            // Handle Modal Save
+            const handleNewProfileSave = (name) => {
+                if (name) {
+                    setStudentName(name);
+                    setItems(prev => [
+                        { ...prev[0], items: [] },
+                        { ...prev[1], items: [] }
+                    ]);
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            message_type: "update_profile",
+                            student_name: name
+                        }));
+                    }
+                }
+                setIsModalOpen(false);
+            };
+
+            const handleCardClick = (item, preFilledCategory = null) => {
+                if (item.isPartial) return;
+                
+                // 1. Open the Analysis Modal immediately in "Loading" state
+                setPendingCardItem(item);
+                setIsAnalysisOpen(true);
+                setAnalysisLoading(true);
+                setCurrentAnalysisData({ 
+                    detectedTrigger: item.text,
+                    category: preFilledCategory || 'VOCAB_GAP' // Use keypress category if available
+                }); 
+
+                // 2. Send analysis request to Backend
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        message_type: "analyze_turn",
+                        text: item.text,
+                        turn_id: item.id
+                    }));
+                } else {
+                    // Fallback if offline
+                    setAnalysisLoading(false);
+                }
+            };
+
+            const handleAnalysisSave = (formData) => {
+                if (!pendingCardItem) return;
+
+                // Construct final payload for Sanity
+                const cardPayload = {
+                    detectedTrigger: formData.detectedTrigger,
+                    category: formData.category,
+                    suggestedCorrection: formData.suggestedCorrection,
+                    explanation: formData.explanation,
+                    sourceReference: {
+                        supabaseSessionId: pendingCardItem.fullData?.session_id || "unknown-session",
+                        timestamp: pendingCardItem.fullData?.timestamp || 0
+                    }
+                };
+
+                // Send to Sanity
+                window.electron.saveCardToSanity(cardPayload)
+                    .then(response => {
+                        if (response.success) {
+                            console.log("Card saved to Sanity:", response.id);
+                            // Visual feedback (add to marked list)
+                            setItems(prev => {
+                                const newItems = [...prev];
+                                newItems[1].items.push({ 
+                                    ...pendingCardItem, 
+                                    id: pendingCardItem.id + '-card-' + Date.now() 
+                                });
+                                return newItems;
+                            });
+                        } else {
+                            alert("Failed to save card: " + response.error);
+                        }
+                    });
+                
+                setIsAnalysisOpen(false);
+                setPendingCardItem(null);
+            };
+
+            return (
+                <div className="overview-container">
+                    <Modal 
+                        isOpen={isModalOpen} 
+                        onClose={() => setIsModalOpen(false)} 
+                        onSave={handleNewProfileSave} 
+                    />
+                    <AnalysisModal
+                        isOpen={isAnalysisOpen}
+                        isLoading={analysisLoading}
+                        initialData={currentAnalysisData}
+                        onClose={() => setIsAnalysisOpen(false)}
+                        onSave={handleAnalysisSave}
+                    />
+                    {/* GROUP 1: LIVE TRANSCRIPT (Chat) - 70% */}
+                    <div className="holder live-transcript">
+                        <div className='holder__title'>Live Session</div>
+                        <div className='holder__content'>
+                            <List items={items[0].items} onCardClick={handleCardClick} groupId="live" studentName={studentName} />
+                        </div>
+                    </div>
+
+                    {/* GROUP 2: MARKED LIST (Narrow) - 30% */}
+                    <div className="holder marked-list holder--tint-2">
+                        <div className='holder__title'>Marked Items</div>
+                        <div className='holder__content'>
+                            <List items={items[1].items} onCardClick={handleCardClick} groupId="marked" studentName={studentName} />
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function List({ items, onCardClick, groupId, studentName }) {
+            const listRef = useRef(null);
+            
+            useEffect(() => {
+                if (groupId === 'live' && listRef.current) {
+                    listRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+            }, [items, groupId]);
+
+            return (
+                <ul className='list'>
+                    {items.map((item, index) => (
+                        <Item 
+                            key={item.id}
+                            item={item}
+                            onClick={() => onCardClick(item)}
+                            studentName={studentName}
+                        />
+                    ))}
+                    <div ref={listRef} />
+                </ul>
+            );
+        }
+
+        function Item({ item, onClick, studentName }) {
+            // Determine if this is Aaron (Tutor) or Student
+            const spk = item.speaker || "";
+            
+            // Logic Update: 
+            // 1. If partial (item.isPartial), use 'center' layout (Neutral)
+            // 2. If final, check speaker for Left/Right
+            
+            let side = "center";
+            let isTutor = false;
+            
+            if (!item.isPartial) {
+                isTutor = spk.includes("Aaron") || spk === "A";
+                side = isTutor ? "right" : "left";
+            }
+            
+            const avatarLabel = isTutor ? "AA" : (studentName ? studentName.substring(0,2).toUpperCase() : "ST");
+            const avatarClass = isTutor ? "tutor" : "student";
+
+            return (
+                <motion.li
+                    className={`list__item ${side}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={onClick}
+                >
+                    <div className="bubble-container">
+                        {/* Left Avatar (Only if final & left) */}
+                        {side === 'left' && (
+                            <div className={`avatar ${avatarClass}`}>{avatarLabel}</div>
+                        )}
+                        
+                        {/* Bubble (Center/Left/Right) */}
+                        <div className={`chat-bubble ${side} ${item.isPartial ? 'partial' : ''}`}>
+                            {item.text}
+                        </div>
+
+                        {/* Right Avatar (Only if final & right) */}
+                        {side === 'right' && (
+                            <div className={`avatar ${avatarClass}`}>{avatarLabel}</div>
+                        )}
+                    </div>
+                </motion.li>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        </script>
+    </body>
+</html>

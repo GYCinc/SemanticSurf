@@ -1,0 +1,507 @@
+{
+  "session_info": {
+    "session_id": "ec358495-2fe9-440a-ae6f-8369a3588731",
+    "speaker": "Aaron",
+    "start_time": "2025-10-31T17:08:46.644616",
+    "end_time": "2025-10-31T17:13:45.201535",
+    "total_turns": 38,
+    "total_words": 288
+  },
+  "speaking_rate": {
+    "average_wpm": 379.3,
+    "min_wpm": 120.0,
+    "max_wpm": 750.0,
+    "native_comparison": "Fast (above native average)",
+    "fast_moments": [
+      {
+        "turn_order": 3,
+        "wpm": 750.0,
+        "transcript": "y..."
+      },
+      {
+        "turn_order": 5,
+        "wpm": 750.0,
+        "transcript": "a little messed up..."
+      },
+      {
+        "turn_order": 9,
+        "wpm": 750.0,
+        "transcript": "i don't know..."
+      },
+      {
+        "turn_order": 24,
+        "wpm": 500.0,
+        "transcript": "find out..."
+      },
+      {
+        "turn_order": 27,
+        "wpm": 750.0,
+        "transcript": "thirty..."
+      }
+    ],
+    "slow_moments": [
+      {
+        "turn_order": 1,
+        "wpm": 250.0,
+        "transcript": "dustin..."
+      },
+      {
+        "turn_order": 2,
+        "wpm": 214.29,
+        "transcript": "testing destin..."
+      },
+      {
+        "turn_order": 4,
+        "wpm": 187.5,
+        "transcript": "okay so here's may..."
+      },
+      {
+        "turn_order": 6,
+        "wpm": 181.82,
+        "transcript": "there is no settings buttons to adjust anything..."
+      },
+      {
+        "turn_order": 8,
+        "wpm": 236.84,
+        "transcript": "it's only showing okay that's fine..."
+      }
+    ],
+    "all_rates": [
+      {
+        "turn_order": 0,
+        "wpm": 375.0,
+        "transcript": "hello..."
+      },
+      {
+        "turn_order": 1,
+        "wpm": 250.0,
+        "transcript": "dustin..."
+      },
+      {
+        "turn_order": 2,
+        "wpm": 214.29,
+        "transcript": "testing destin..."
+      },
+      {
+        "turn_order": 3,
+        "wpm": 750.0,
+        "transcript": "y..."
+      },
+      {
+        "turn_order": 4,
+        "wpm": 187.5,
+        "transcript": "okay so here's may..."
+      },
+      {
+        "turn_order": 5,
+        "wpm": 750.0,
+        "transcript": "a little messed up..."
+      },
+      {
+        "turn_order": 6,
+        "wpm": 181.82,
+        "transcript": "there is no settings buttons to adjust anything..."
+      },
+      {
+        "turn_order": 7,
+        "wpm": 375.0,
+        "transcript": "and it's interesting..."
+      },
+      {
+        "turn_order": 8,
+        "wpm": 236.84,
+        "transcript": "it's only showing okay that's fine..."
+      },
+      {
+        "turn_order": 9,
+        "wpm": 750.0,
+        "transcript": "i don't know..."
+      },
+      {
+        "turn_order": 10,
+        "wpm": 204.55,
+        "transcript": "if it should here the speaker..."
+      },
+      {
+        "turn_order": 11,
+        "wpm": 333.33,
+        "transcript": "that's system audio right..."
+      },
+      {
+        "turn_order": 12,
+        "wpm": 375.0,
+        "transcript": "okay..."
+      },
+      {
+        "turn_order": 13,
+        "wpm": 333.33,
+        "transcript": "black mask is fixed..."
+      },
+      {
+        "turn_order": 14,
+        "wpm": 203.57,
+        "transcript": "menu is a little fucked up looking as you can see ..."
+      },
+      {
+        "turn_order": 15,
+        "wpm": 261.36,
+        "transcript": "also what do you keep talking about making it look..."
+      },
+      {
+        "turn_order": 16,
+        "wpm": 333.33,
+        "transcript": "and there's a here's an idea of that what it looks..."
+      },
+      {
+        "turn_order": 17,
+        "wpm": 412.5,
+        "transcript": "i guess i can't attach it in here i don't think..."
+      },
+      {
+        "turn_order": 18,
+        "wpm": 187.5,
+        "transcript": "the other thing is i don't see anything else when ..."
+      },
+      {
+        "turn_order": 19,
+        "wpm": 208.76,
+        "transcript": "isn't there options where's the thing about speaki..."
+      },
+      {
+        "turn_order": 20,
+        "wpm": 230.77,
+        "transcript": "so maybe check that..."
+      },
+      {
+        "turn_order": 21,
+        "wpm": 375.0,
+        "transcript": "metric..."
+      },
+      {
+        "turn_order": 22,
+        "wpm": 253.52,
+        "transcript": "check why the ui seems broken and see if everythin..."
+      },
+      {
+        "turn_order": 23,
+        "wpm": 403.85,
+        "transcript": "i wish i could send you the picture and if i can i..."
+      },
+      {
+        "turn_order": 24,
+        "wpm": 500.0,
+        "transcript": "find out..."
+      },
+      {
+        "turn_order": 25,
+        "wpm": 236.84,
+        "transcript": "when we meet the very screen..."
+      },
+      {
+        "turn_order": 26,
+        "wpm": 209.56,
+        "transcript": "nothing distant jesus okay and i got this warning ..."
+      },
+      {
+        "turn_order": 27,
+        "wpm": 750.0,
+        "transcript": "thirty..."
+      },
+      {
+        "turn_order": 28,
+        "wpm": 750.0,
+        "transcript": "five..."
+      },
+      {
+        "turn_order": 29,
+        "wpm": 750.0,
+        "transcript": "no..."
+      },
+      {
+        "turn_order": 30,
+        "wpm": 169.35,
+        "transcript": "right but they weren't that wasn't normal..."
+      },
+      {
+        "turn_order": 31,
+        "wpm": 500.0,
+        "transcript": "that's what i'm saying..."
+      },
+      {
+        "turn_order": 32,
+        "wpm": 283.78,
+        "transcript": "why there shouldn't be so many of those going on t..."
+      },
+      {
+        "turn_order": 33,
+        "wpm": 375.0,
+        "transcript": "an error..."
+      },
+      {
+        "turn_order": 34,
+        "wpm": 120.0,
+        "transcript": "because why would there be twenty you understand..."
+      },
+      {
+        "turn_order": 35,
+        "wpm": 642.86,
+        "transcript": "what do i need to do..."
+      },
+      {
+        "turn_order": 36,
+        "wpm": 750.0,
+        "transcript": "even..."
+      },
+      {
+        "turn_order": 37,
+        "wpm": 187.5,
+        "transcript": "sometimes..."
+      }
+    ]
+  },
+  "pauses": {
+    "message": "No pause data available"
+  },
+  "complexity": {
+    "total_words": 288,
+    "unique_words": 164,
+    "vocabulary_diversity": 0.569,
+    "average_word_length": 4.28,
+    "complexity_level": "B1 (Intermediate)",
+    "most_complex_words": [
+      "interesting",
+      "everything",
+      "understand",
+      "obviously",
+      "shouldn't",
+      "sentences",
+      "happening",
+      "sometimes",
+      "settings",
+      "speaking",
+      "whatever",
+      "terminal",
+      "intended",
+      "anything",
+      "hundred",
+      "warning",
+      "distant",
+      "there's",
+      "where's",
+      "speaker"
+    ]
+  },
+  "fillers": {
+    "total_fillers": 6,
+    "filler_percentage": 2.08,
+    "by_type": {
+      "so": 3,
+      "like": 3
+    },
+    "locations": [
+      {
+        "turn_order": 4,
+        "filler": "so",
+        "count": 1,
+        "transcript": "okay so here's may..."
+      },
+      {
+        "turn_order": 15,
+        "filler": "like",
+        "count": 1,
+        "transcript": "also what do you keep talking about making it look..."
+      },
+      {
+        "turn_order": 16,
+        "filler": "like",
+        "count": 1,
+        "transcript": "and there's a here's an idea of that what it looks..."
+      },
+      {
+        "turn_order": 20,
+        "filler": "so",
+        "count": 1,
+        "transcript": "so maybe check that..."
+      },
+      {
+        "turn_order": 22,
+        "filler": "like",
+        "count": 1,
+        "transcript": "check why the ui seems broken and see if everythin..."
+      },
+      {
+        "turn_order": 32,
+        "filler": "so",
+        "count": 1,
+        "transcript": "why there shouldn't be so many of those going on t..."
+      }
+    ],
+    "fluency_impact": "Low (fluent)"
+  },
+  "repetition": {
+    "most_common_words": {
+      "there": 5,
+      "about": 5,
+      "okay": 4,
+      "that's": 4,
+      "what": 4,
+      "why": 4,
+      "that": 4,
+      "testing": 3,
+      "buttons": 3,
+      "anything": 3,
+      "it's": 3,
+      "don't": 3,
+      "here": 3,
+      "black": 3,
+      "see": 3,
+      "like": 3,
+      "when": 3,
+      "here's": 2,
+      "little": 2,
+      "right": 2
+    },
+    "overused_words": {},
+    "repetition_score": 0,
+    "assessment": "Good variety"
+  },
+  "sentence_length": {
+    "average_length": 7.6,
+    "shortest": 1,
+    "longest": 38,
+    "complexity_level": "Moderate (intermediate)",
+    "short_sentences": 21,
+    "long_sentences": 5,
+    "examples_short": [
+      {
+        "turn_order": 0,
+        "word_count": 1,
+        "transcript": "hello..."
+      },
+      {
+        "turn_order": 1,
+        "word_count": 1,
+        "transcript": "dustin..."
+      },
+      {
+        "turn_order": 2,
+        "word_count": 2,
+        "transcript": "testing destin..."
+      },
+      {
+        "turn_order": 3,
+        "word_count": 1,
+        "transcript": "y..."
+      },
+      {
+        "turn_order": 4,
+        "word_count": 4,
+        "transcript": "okay so here's may..."
+      }
+    ],
+    "examples_long": [
+      {
+        "turn_order": 14,
+        "word_count": 19,
+        "transcript": "menu is a little fucked up looking as you can see ..."
+      },
+      {
+        "turn_order": 15,
+        "word_count": 23,
+        "transcript": "also what do you keep talking about making it look..."
+      },
+      {
+        "turn_order": 19,
+        "word_count": 27,
+        "transcript": "isn't there options where's the thing about speaki..."
+      },
+      {
+        "turn_order": 22,
+        "word_count": 24,
+        "transcript": "check why the ui seems broken and see if everythin..."
+      },
+      {
+        "turn_order": 26,
+        "word_count": 38,
+        "transcript": "nothing distant jesus okay and i got this warning ..."
+      }
+    ]
+  },
+  "passion_moments": {
+    "baseline_wpm": 379.3,
+    "passion_threshold": 455.1,
+    "passion_moments_count": 10,
+    "passion_moments": [
+      {
+        "turn_order": 3,
+        "wpm": 750.0,
+        "transcript": "y"
+      },
+      {
+        "turn_order": 5,
+        "wpm": 750.0,
+        "transcript": "a little messed up"
+      },
+      {
+        "turn_order": 9,
+        "wpm": 750.0,
+        "transcript": "i don't know"
+      },
+      {
+        "turn_order": 24,
+        "wpm": 500.0,
+        "transcript": "find out"
+      },
+      {
+        "turn_order": 27,
+        "wpm": 750.0,
+        "transcript": "thirty"
+      },
+      {
+        "turn_order": 28,
+        "wpm": 750.0,
+        "transcript": "five"
+      },
+      {
+        "turn_order": 29,
+        "wpm": 750.0,
+        "transcript": "no"
+      },
+      {
+        "turn_order": 31,
+        "wpm": 500.0,
+        "transcript": "that's what i'm saying"
+      },
+      {
+        "turn_order": 35,
+        "wpm": 642.86,
+        "transcript": "what do i need to do"
+      },
+      {
+        "turn_order": 36,
+        "wpm": 750.0,
+        "transcript": "even"
+      }
+    ],
+    "insight": "Found 10 moments of high engagement - student is interested!"
+  },
+  "grammar_patterns": {
+    "patterns_found": 0,
+    "by_type": {
+      "missing_prepositions": 0,
+      "verb_tense_issues": 0,
+      "article_issues": 0
+    },
+    "details": {
+      "missing_prepositions": [],
+      "verb_tense_issues": [],
+      "article_issues": []
+    },
+    "note": "Basic pattern detection - not comprehensive"
+  },
+  "marked_turns": {
+    "total_marked": 0,
+    "by_type": {},
+    "marked_turns": []
+  }
+}

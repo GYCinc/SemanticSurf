@@ -1,0 +1,58 @@
+{
+  "name": "semantic-surfer",
+  "productName": "Semantic Surfer",
+  "version": "1.0.0",
+  "description": "ESL Transcript Viewer - Desktop App",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "install-electron": "npm install electron --save-dev",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:all": "electron-builder -mwl"
+  },
+  "keywords": [
+    "esl",
+    "transcript",
+    "assemblyai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "build": {
+    "appId": "com.semanticsurfer.app",
+    "productName": "Semantic Surfer",
+    "mac": {
+      "category": "public.app-category.education",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "dmg": {
+      "title": "Semantic Surfer",
+      "icon": "build/icon.icns"
+    },
+    "files": [
+      "electron-main.js",
+      "preload.js",
+      "viewer2.html",
+      "sanityClient.js",
+      "student_profiles.json",
+      "config.json",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "@sanity/client": "^7.13.0",
+    "dotenv": "^17.2.3"
+  }
+}

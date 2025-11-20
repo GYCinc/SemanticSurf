@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+venv/
+semantic_surfer_venv/
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# OS generated files
+.DS_Store
+.Thumbs.db
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDEs
+.vscode/
+.idea/
+
+# Session Data (Optional - un-comment to ignore local session files)
+# sessions/
+
