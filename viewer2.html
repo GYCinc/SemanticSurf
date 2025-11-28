@@ -787,10 +787,10 @@
                             liveList[liveList.length - 1] = { ...lastItem, text: text + "..." };
                         } else {
                             liveList.push({ 
-                                id: 'temp-' + Date.now(), 
+                                id: 'partial-' + Date.now(),
                                 text: text + "...", 
                                 isPartial: true,
-                                speaker: null 
+                                speaker: null
                             });
                         }
                         newItems[0] = { ...newItems[0], items: liveList };
@@ -801,19 +801,29 @@
                 const handleFinal = (data) => {
                     setItems(prev => {
                         const newItems = [...prev];
-                        const liveList = [...newItems[0].items];
-                        if (liveList.length > 0 && liveList[liveList.length - 1].isPartial) {
-                            liveList.pop();
-                        }
+                        let liveList = [...newItems[0].items];
+
+                        // Find and replace the corresponding partial
+                        const partialIndex = liveList.findIndex(item => item.isPartial);
                         
-                        let speaker = data.speaker || "Unknown";
-                        liveList.push({ 
-                            id: 'turn-' + data.turn_order, 
-                            text: data.text, 
-                            speaker: speaker,
-                            isPartial: false, 
-                            fullData: data 
-                        });
+                        if (partialIndex !== -1) {
+                            liveList[partialIndex] = {
+                                id: 'turn-' + data.turn_order,
+                                text: data.text,
+                                speaker: data.speaker || "Unknown",
+                                isPartial: false,
+                                fullData: data
+                            };
+                        } else {
+                            // If no partial, just add it
+                            liveList.push({
+                                id: 'turn-' + data.turn_order,
+                                text: data.text,
+                                speaker: data.speaker || "Unknown",
+                                isPartial: false,
+                                fullData: data
+                            });
+                        }
                         
                         newItems[0] = { ...newItems[0], items: liveList };
                         return newItems;
