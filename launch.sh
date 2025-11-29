@@ -9,24 +9,41 @@ echo "--- LAUNCHING SEMANTIC SURFER ---"
 echo "Cleaning up port 8765..."
 lsof -ti:8765 | xargs kill -9 2>/dev/null
 
-# --- 2. ACTIVATE ENVIRONMENT ---
-if [ -d "venv" ]; then
+# --- 2. CHECK & SETUP ENVIRONMENT ---
+
+# Check/Create Python Virtual Environment
+if [ ! -d "venv" ]; then
+    echo "Creating Python virtual environment..."
+    python3 -m venv venv
     source venv/bin/activate
+    echo "Installing Python dependencies..."
+    pip install -r requirements.txt
 else
-    echo "Error: Python virtual environment 'venv' not found."
-    exit 1
+    source venv/bin/activate
 fi
 
 # Check which python we are using
 which python3
 
+# Check for .env file
+if [ ! -f ".env" ]; then
+    echo "Error: .env file not found. Please create one with ASSEMBLYAI_API_KEY."
+    exit 1
+fi
+
 # Ensure .env variables are loaded
 export $(cat .env | xargs)
+
+# Check/Install Node.js Dependencies
+if [ ! -d "node_modules" ]; then
+    echo "Installing Node.js dependencies..."
+    npm install
+fi
 
 # --- 3. LAUNCH PYTHON BACKEND ---
 echo "Starting Python Backend..."
 # Use python3 and -u for unbuffered output (critical for real-time logs)
-python3 -u main.py & 
+python3 -u main.py &
 PYTHON_PID=$!
 
 # Wait for server to start

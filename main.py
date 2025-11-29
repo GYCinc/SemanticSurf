@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Type
 
 import httpx # Added for LLM Gateway
+from assemblyai import Transcriber, TranscriptionConfig  # FIX: Added missing imports
 import assemblyai as aai
 import numpy as np
 import pyaudio
@@ -731,6 +732,37 @@ async def websocket_handler(websocket):
                         "result": analysis_result
                     }))
 
+                elif data.get("message_type") == "end_session":
+                    logger.info("🛑 Session ended by user.")
+                    # In a real app, we would signal the streaming thread to stop.
+                    # For now, we just log it and maybe save the session one last time.
+                    save_session_to_file()
+                    await broadcast_message({"message_type": "session_ended"})
+
+                elif data.get("message_type") == "archive_session":
+                    logger.info("📦 Archive request received.")
+                    # Placeholder for archive logic
+                    save_session_to_file()
+                    await websocket.send(json.dumps({
+                        "message_type": "notification",
+                        "text": "Session archived successfully (Simulated)"
+                    }))
+
+                elif data.get("message_type") == "get_system_health":
+                    logger.info("🏥 Health check requested.")
+                    health_data = {
+                        "cpu_percent": 0,
+                        "memory_usage": 0
+                    }
+                    if PSUTIL_AVAILABLE:
+                        health_data["cpu_percent"] = psutil.cpu_percent()
+                        health_data["memory_usage"] = psutil.virtual_memory().percent
+                    
+                    await websocket.send(json.dumps({
+                        "message_type": "system_health",
+                        "data": health_data
+                    }))
+
             except json.JSONDecodeError:
                 logger.error(f"Invalid JSON from client: {message}")
     except websockets.exceptions.ConnectionClosed:
@@ -1107,6 +1139,23 @@ async def upload_analysis_to_supabase(session_path, duration_seconds, audio_path
         # Use turns_source for corpus building
         student_turns = [t for t in turns_source if t.get('speaker') != config.get('speaker_name', 'Aaron')]
         
+        # DIAGNOSTIC LOGGING - Validate assumptions
+        logger.info(f"🔍 DIAGNOSTIC: Found {len(student_turns)} student turns out of {len(turns_source)} total turns")
+        logger.info(f"🔍 DIAGNOSTIC: Speaker filter: looking for turns where speaker != '{config.get('speaker_name', 'Aaron')}'")
+        
+        total_words_found = 0
+        for i, turn in enumerate(student_turns):
+            words_in_turn = turn.get('words', [])
+            logger.info(f"🔍 DIAGNOSTIC: Turn {i+1}: {len(words_in_turn)} words found")
+            total_words_found += len(words_in_turn)
+            
+            # Log first few words as sample
+            if words_in_turn and i < 3:  # Log first 3 turns' words
+                sample_words = [w.get('text', '') for w in words_in_turn[:5]]
+                logger.info(f"🔍 DIAGNOSTIC: Sample words from turn {i+1}: {sample_words}")
+        
+        logger.info(f"🔍 DIAGNOSTIC: Total words across all student turns: {total_words_found}")
+        
         for turn in student_turns:
             corpus_entry = {
                 "student_id": student_id,
@@ -1124,6 +1173,39 @@ async def upload_analysis_to_supabase(session_path, duration_seconds, audio_path
                 supabase.table("student_corpus").insert(corpus_entry).execute()
             except Exception as e:
                 logger.warning(f"Failed to add turn to corpus: {e}")
+        
+        # 5. BUILD WORD-LEVEL CORPUS - Extract individual words
+        logger.info("📖 Building word-level corpus...")
+        word_corpus_entries = []
+        for turn in student_turns:
+            words = turn.get('words', [])
+            for word in words:
+                word_entry = {
+                    "student_id": student_id,
+                    "text": word.get('text', ''),
+                    "source": "word",
+                    "metadata": {
+                        "session_id": session_data.get('session_id'),
+                        "turn_order": turn.get('turn_order'),
+                        "word_start_ms": word.get('start_ms'),
+                        "word_end_ms": word.get('end_ms'),
+                        "word_duration_ms": word.get('duration_ms'),
+                        "confidence": word.get('confidence'),
+                        "word_is_final": word.get('word_is_final')
+                    }
+                }
+                word_corpus_entries.append(word_entry)
+        
+        if word_corpus_entries:
+            try:
+                # Insert in batches to avoid rate limits
+                batch_size = 100
+                for i in range(0, len(word_corpus_entries), batch_size):
+                    batch = word_corpus_entries[i:i + batch_size]
+                    supabase.table("student_corpus").insert(batch).execute()
+                logger.info(f"✅ Added {len(word_corpus_entries)} individual words to corpus")
+            except Exception as e:
+                logger.warning(f"Failed to add word-level corpus entries: {e}")
         
         logger.info(f"✅ Added {len(student_turns)} turns to corpus")
 

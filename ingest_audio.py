@@ -80,7 +80,8 @@ async def perform_batch_diarization(audio_path):
             format_text=True
         )
         
-        transcript = await transcriber.transcribe_async(audio_path, config)
+        # Using synchronous transcribe to avoid Python 3.12 Future await error
+        transcript = transcriber.transcribe(audio_path, config)
         
         if transcript.status == "error":
             logger.error(f"❌ Diarization failed: {transcript.error}")
@@ -178,8 +179,8 @@ Provide a structured JSON response with: teaching_moments, action_items, progres
         "student_id": student_id,
         "session_date": timestamp,
         "duration_seconds": int(duration) if duration else 0,
-        "transcript_json": {"turns": turns}, 
-        "summary": "Manual Ingestion",
+        # "transcript_json": {"turns": turns}, # Column missing in schema 
+        # "summary": "Manual Ingestion", # Column missing in schema
         "metrics": {
             "wpm": 0, 
             "filler_words": 0,
@@ -214,9 +215,40 @@ Provide a structured JSON response with: teaching_moments, action_items, progres
     if corpus_entries:
         try:
             supabase.table("student_corpus").insert(corpus_entries).execute()
-            logger.info(f"✅ Added {len(corpus_entries)} entries to student corpus")
+            logger.info(f"✅ Added {len(corpus_entries)} turn entries to student corpus")
         except Exception as e:
             logger.error(f"❌ Failed to upload corpus: {e}")
+
+    # 6. Upload Word-Level Corpus
+    logger.info("📖 Building word-level corpus...")
+    word_corpus_entries = []
+    for i, turn in enumerate(turns):
+        if turn["speaker"] != "Aaron": # Only student turns
+            for word in turn.get("words", []):
+                word_entry = {
+                    "student_id": student_id,
+                    "text": word.get("text", ""),
+                    "source": "word",
+                    "metadata": {
+                        "session_id": session_id,
+                        "turn_order": i,
+                        "word_start_ms": word.get("start"),
+                        "word_end_ms": word.get("end"),
+                        "confidence": word.get("confidence")
+                    }
+                }
+                word_corpus_entries.append(word_entry)
+    
+    if word_corpus_entries:
+        try:
+            # Insert in batches to avoid rate limits
+            batch_size = 100
+            for i in range(0, len(word_corpus_entries), batch_size):
+                batch = word_corpus_entries[i:i + batch_size]
+                supabase.table("student_corpus").insert(batch).execute()
+            logger.info(f"✅ Added {len(word_corpus_entries)} individual words to corpus")
+        except Exception as e:
+            logger.error(f"❌ Failed to upload word corpus: {e}")
 
     # 6. Run LeMUR Analysis (8 Categories)
     logger.info("🤖 Running LeMUR Classification (8 Categories)...")
@@ -235,11 +267,16 @@ Provide a structured JSON response with: teaching_moments, action_items, progres
             json.dump(temp_session_data, f)
             
         classification_prompt = (
-            "Analyze the student's speech and classify their performance into these 8 categories: "
-            "1. Grammar, 2. Vocabulary, 3. Pronunciation, 4. Fluency, 5. Coherence, "
-            "6. Interaction, 7. Listening, 8. Task Achievement. "
-            "For each, provide a score (1-10) and a brief comment. "
-            "Format the output as a structured list."
+            "Analyze the student's speech based ONLY on the text transcript. Do NOT hallucinate audio features like pronunciation or flow. "
+            "1. **Topics & Subjects**: List the main topics discussed (e.g., 'Travel', 'Business Meetings').\n"
+            "2. **Linguistic Analysis**: Rate (1-10) and comment on these 6 text-based categories:\n"
+            "   - Grammar (Syntax, tense usage)\n"
+            "   - Vocabulary (Word choice, range)\n"
+            "   - Phrasal Verbs (Usage of multi-word verbs)\n"
+            "   - Expressions (Idiomatic usage)\n"
+            "   - Discourse (Coherence, sentence structure)\n"
+            "   - Sociolinguistics (Register, politeness, tone)\n"
+            "Format the output as a structured JSON-like list."
         )
         
         analysis_results = run_lemur_query(temp_session_path, custom_prompt=classification_prompt)
