@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Project Sentinel Dashboard</title>
+    <title>Semantic Surfer - Crimson Glass</title>
     
     <!-- React & Framer Motion -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -11,9 +11,11 @@
     <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Fonts & Tailwind -->
+    <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:wght,FILL@300,1&amp;display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     
     <style type="text/tailwindcss">
@@ -26,12 +28,11 @@
             --bg-primary: #000000;
             --glass-panel: rgba(28, 28, 30, 0.65);
             --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-blue: #0A84FF;
-            --accent-green: #30D158;
             --accent-red: #FF453A;
+            --accent-orange: #FF8C00;
             --text-primary: #FFFFFF;
             --text-secondary: #8E8E93;
-            --bubble-sent: #0A84FF;
+            --bubble-sent: #FF453A; /* Red for sent messages */
             --bubble-received: #1C1C1E;
         }
 
@@ -71,7 +72,7 @@
         }
     </style>
 </head>
-<body class="bg-black text-white min-h-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white">
+<body class="bg-black text-white min-h-screen flex flex-col overflow-hidden selection:bg-red-500 selection:text-white">
     <div id="root" class="flex flex-col h-screen"></div>
 
     <script type="text/babel">
@@ -269,7 +270,7 @@
                     <header className="px-6 py-4 glass-panel flex items-center justify-between sticky top-0 z-20">
                         <div className="flex items-center space-x-6">
                             <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center shadow-lg shadow-red-500/30">
                                     <span className="material-symbols-rounded text-white text-lg">waves</span>
                                 </div>
                                 <h1 className="text-xl font-semibold tracking-tight text-white">Semantic Surf</h1>
@@ -317,7 +318,7 @@
                             
                             {/* INPUT AREA (Placeholder for future) */}
                             <div className="p-4 glass-panel border-t border-white/5">
-                                <div className="flex items-center space-x-3 bg-white/5 rounded-2xl px-4 py-3 border border-white/5 focus-within:border-blue-500/50 transition-colors">
+                                <div className="flex items-center space-x-3 bg-white/5 rounded-2xl px-4 py-3 border border-white/5 focus-within:border-red-500/50 transition-colors">
                                     <span className="material-symbols-rounded text-gray-500">mic</span>
                                     <input type="text" placeholder="Listening..." className="bg-transparent border-none outline-none text-sm text-white w-full placeholder-gray-600" disabled />
                                     <span className="material-symbols-rounded text-gray-500">graphic_eq</span>
@@ -425,8 +426,8 @@
                         <div className={`
                             px-4 py-2 rounded-2xl text-[15px] leading-relaxed cursor-pointer transition-all shadow-sm
                             ${isTutor 
-                                ? 'bg-[#0A84FF] text-white rounded-tr-sm hover:bg-[#007AFF]' 
-                                : 'bg-[#1C1C1E] text-gray-100 rounded-tl-sm hover:bg-[#2C2C2E] border border-white/5'}
+                                ? 'bg-[var(--bubble-sent)] text-white rounded-tr-sm hover:bg-red-600'
+                                : 'bg-[var(--bubble-received)] text-gray-100 rounded-tl-sm hover:bg-[#2C2C2E] border border-white/5'}
                         `}>
                             {item.text}
                         </div>
@@ -452,9 +453,9 @@
         function TaskItem({ item }) {
             const analysis = item.analysis || {};
             return (
-                <div className="group bg-[#1C1C1E] hover:bg-[#2C2C2E] rounded-xl p-3 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer">
+                <div className="group bg-[#1C1C1E] hover:bg-[#2C2C2E] rounded-xl p-3 border border-white/5 hover:border-orange-500/30 transition-all cursor-pointer">
                     <div className="flex items-start justify-between mb-1">
-                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider bg-blue-500/10 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider bg-orange-500/10 px-1.5 py-0.5 rounded">
                             {analysis.category || "TASK"}
                         </span>
                         <span className="text-[10px] text-gray-600 font-mono">{item.timestamp}</span>
@@ -489,7 +490,7 @@
 
                         {isLoading ? (
                             <div className="py-8 flex flex-col items-center justify-center space-y-3">
-                                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
                                 <p className="text-sm text-gray-500">Analyzing context...</p>
                             </div>
                         ) : (
@@ -505,7 +506,7 @@
                                     <div>
                                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider ml-1">Category</label>
                                         <select 
-                                            className="mt-1 w-full bg-[#2C2C2E] text-white text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-blue-500 border border-white/5"
+                                            className="mt-1 w-full bg-[#2C2C2E] text-white text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-red-500 border border-white/5"
                                             value={formData.category}
                                             onChange={e => setFormData({...formData, category: e.target.value})}
                                         >
@@ -517,7 +518,7 @@
                                     <div>
                                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider ml-1">Correction</label>
                                         <input 
-                                            className="mt-1 w-full bg-[#2C2C2E] text-white text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-blue-500 border border-white/5"
+                                            className="mt-1 w-full bg-[#2C2C2E] text-white text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-red-500 border border-white/5"
                                             value={formData.suggestedCorrection}
                                             onChange={e => setFormData({...formData, suggestedCorrection: e.target.value})}
                                             placeholder="Correction..."
@@ -527,7 +528,7 @@
 
                                 <div className="pt-4 flex justify-end space-x-3">
                                     <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">Cancel</button>
-                                    <button onClick={() => onSave(formData)} className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-full shadow-lg shadow-blue-600/20 transition-all transform active:scale-95">
+                                    <button onClick={() => onSave(formData)} className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-full shadow-lg shadow-red-600/20 transition-all transform active:scale-95">
                                         Save Card
                                     </button>
                                 </div>
@@ -569,4 +570,3 @@
     </script>
 </body>
 </html>
-
