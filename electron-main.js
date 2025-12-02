@@ -35,7 +35,7 @@ function createWindow() {
       responseHeaders: {
         ...details.responseHeaders,
         "Content-Security-Policy": [
-          "default-src 'self' https://unpkg.com; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws://localhost:8765",
+          "default-src 'self' https://unpkg.com; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws://localhost:8765",
         ],
       },
     });

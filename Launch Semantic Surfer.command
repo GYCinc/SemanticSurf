@@ -30,7 +30,7 @@ sleep 1
 
 # Start Python backend
 echo "🐍 Starting backend..."
-source venv/bin/activate && python3 main.py &python main.py &
+source venv/bin/activate && python3 main.py &
 BACKEND_PID=$!
 
 # Wait for backend to start
