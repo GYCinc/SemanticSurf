@@ -53,7 +53,7 @@ sleep 3 # Give Python time to start WebSocket server
 # --- 4. LAUNCH ELECTRON (Frontend) ---
 echo "Starting Electron Frontend..."
 # Use npx electron . to ensure we use the local electron dependency
-npx electron . &
+npm start &
 ELECTRON_PID=$!
 
 # --- 5. CLEANUP ON EXIT ---

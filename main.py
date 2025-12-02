@@ -13,6 +13,7 @@ from typing import Type
 import httpx # Added for LLM Gateway
 from assemblyai import Transcriber, TranscriptionConfig  # FIX: Added missing imports
 import assemblyai as aai
+from analyzers.material_agent import MaterialAgent
 import numpy as np
 import pyaudio
 import websockets
@@ -232,90 +233,12 @@ current_session = {
 # -------------------------------------------------------------------------
 # LLM ANALYSIS (AssemblyAI Gateway)
 # -------------------------------------------------------------------------
+# Initialize MaterialAgent
+material_agent = MaterialAgent(api_key=api_key)
+
 async def analyze_turn_with_llm(text, context=""):
-    """Analyze a student turn using AssemblyAI LLM Gateway with Tool Calling"""
-    if not api_key:
-        logger.error("Cannot analyze: Missing AssemblyAI API Key")
-        return {"error": "Missing API Key"}
-
-    url = "https://llm-gateway.assemblyai.com/v1/chat/completions"
-    headers = {
-        "authorization": api_key,
-        "content-type": "application/json"
-    }
-
-    # Define the schema for the output we want
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": "submit_language_feedback",
-                "description": "Submit structured feedback for a language learner.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "category": {
-                            "type": "string",
-                            "enum": ["VOCAB_GAP", "GRAMMAR_ERR", "RECAST", "AVOIDANCE", "PRONUNCIATION", "NONE"],
-                            "description": "The category of the linguistic issue."
-                        },
-                        "suggestedCorrection": {
-                            "type": "string",
-                            "description": "The natural, corrected version of the sentence."
-                        },
-                        "explanation": {
-                            "type": "string",
-                            "description": "A concise explanation of the error (max 2 sentences)."
-                        }
-                    },
-                    "required": ["category", "suggestedCorrection", "explanation"]
-                }
-            }
-        }
-    ]
-
-    payload = {
-        "model": "claude-3-5-haiku-20241022", 
-        "messages": [
-            {
-                "role": "system", 
-                "content": "You are an expert ESL tutor. Analyze the last user utterance given the context. Use the 'submit_language_feedback' tool to provide your analysis."
-            },
-            {
-                "role": "user", 
-                "content": f"Context:\n{context}\n\nStudent Utterance to Analyze: \"{text}\""
-            }
-        ],
-        "max_tokens": 1000,
-        "tools": tools,
-        "tool_choice": {"type": "function", "function": {"name": "submit_language_feedback"}}
-    }
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=headers, json=payload, timeout=15.0)
-            response.raise_for_status()
-            result = response.json()
-            
-            # Extract tool arguments
-            try:
-                choice = result["choices"][0]
-                if choice["message"].get("tool_calls"):
-                    tool_call = choice["message"]["tool_calls"][0]
-                    args = json.loads(tool_call["function"]["arguments"])
-                    return args
-                else:
-                    # Fallback if model refused to call tool (rare with tool_choice)
-                    logger.warning("LLM did not call tool, falling back to content.")
-                    return {"category": "NONE", "suggestedCorrection": text, "explanation": "No specific feedback."}
-                    
-            except (KeyError, IndexError, json.JSONDecodeError) as e:
-                logger.error(f"LLM Response Parsing Error: {e}")
-                return {"error": "Failed to parse LLM response"}
-                
-    except Exception as e:
-        logger.error(f"LLM Gateway Error: {e}")
-        return {"error": str(e)}
+    """Analyze a student turn using the MaterialAgent"""
+    return await material_agent.analyze_turn(text, context)
 
 
 # -------------------------------------------------------------------------

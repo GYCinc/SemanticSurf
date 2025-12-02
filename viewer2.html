@@ -4,6 +4,7 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Semantic Surfer - Crimson Glass</title>
+    <title>Project Sentinel: Liquid Glass</title>
     
     <!-- React & Framer Motion -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -20,10 +21,10 @@
     
     <style type="text/tailwindcss">
         @layer base {
-            html {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-            }
+            html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         }
+
+        /* --- LIQUID GLASS THEME --- */
         :root {
             --bg-primary: #000000;
             --glass-panel: rgba(28, 28, 30, 0.65);
@@ -34,233 +35,152 @@
             --text-secondary: #8E8E93;
             --bubble-sent: #FF453A; /* Red for sent messages */
             --bubble-received: #1C1C1E;
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-surface: rgba(255, 255, 255, 0.03);
+            --glass-highlight: rgba(255, 255, 255, 0.08);
+            --text-glow: 0 0 10px rgba(255,255,255,0.3);
         }
 
-        /* Apple-style Glassmorphism */
+        /* Animated Background */
+        .liquid-bg {
+            background: radial-gradient(circle at 0% 0%, #1a2a6c, #b21f1f, #fdbb2d);
+            background-size: 400% 400%;
+            animation: gradientBG 20s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Glass Utility Classes */
         .glass-panel {
-            background-color: var(--glass-panel);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: var(--glass-surface);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
             border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .glass-bubble {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         }
 
         .glass-button {
-            background-color: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
         }
         .glass-button:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-        .glass-button:active {
-            transform: scale(0.98);
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+            transform: translateY(-1px);
         }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+        .text-shadow-sm { text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .text-shadow-glow { text-shadow: 0 0 10px rgba(255,255,255,0.4); }
 
-        /* Animations */
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-slide-in {
-            animation: slideIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col overflow-hidden selection:bg-red-500 selection:text-white">
     <div id="root" class="flex flex-col h-screen"></div>
+<body class="liquid-bg text-white min-h-screen flex flex-col overflow-hidden">
+    <!-- Overlay for slight darkening to improve text readability -->
+    <div class="absolute inset-0 bg-black/30 pointer-events-none z-0"></div>
+
+    <div id="root" class="flex flex-col h-screen relative z-10"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, useCallback } = React;
+        const { useState, useEffect, useRef, createContext, useContext } = React;
         const { motion, AnimatePresence } = window.Motion;
 
-        // --- INITIAL DATA ---
-        const INITIAL_DATA = [
-            { id: 'live', items: [] },
-            { id: 'marked', items: [] }
-        ];
+        // --- MODULE: DashboardClient (Networking Layer) ---
+        class DashboardClient {
+            constructor(url, handlers) {
+                this.url = url;
+                this.handlers = handlers;
+                this.socket = null;
+                this.reconnectInterval = 3000;
+            }
 
-        function App() {
+            connect(studentName) {
+                this.socket = new WebSocket(this.url);
+                this.socket.onopen = () => {
+                    this.handlers.onStatusChange("Connected");
+                    this.socket.send(JSON.stringify({ message_type: "start_session", student_name: studentName }));
+                };
+                this.socket.onclose = () => {
+                    this.handlers.onStatusChange("Disconnected");
+                    setTimeout(() => this.connect(studentName), this.reconnectInterval);
+                };
+                this.socket.onerror = () => this.handlers.onStatusChange("Error");
+                this.socket.onmessage = (event) => {
+                    try { this.handleMessage(JSON.parse(event.data)); } catch (e) { console.error("Parse Error:", e); }
+                };
+            }
+
+            handleMessage(data) {
+                switch(data.message_type) {
+                    case "partial": this.handlers.onPartial(data.text); break;
+                    case "transcript": this.handlers.onTurn(data); break;
+                    case "analysis_result": this.handlers.onAnalysis(data); break;
+                    case "student_list": this.handlers.onStudentList(data.students); break;
+                    case "system_health": this.handlers.onHealth(data.data); break;
+                }
+            }
+
+            sendMessage(type, payload = {}) {
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    this.socket.send(JSON.stringify({ message_type: type, ...payload }));
+                }
+            }
+        }
+
+        // --- MODULE: StudentContext (State Management) ---
+        const StudentContext = createContext();
+
+        function StudentProvider({ children }) {
             const [studentName, setStudentName] = useState("Unknown");
             const [connectionStatus, setConnectionStatus] = useState("Disconnected");
-            const [items, setItems] = useState(INITIAL_DATA);
-            const [notes, setNotes] = useState("");
-            const [ws, setWs] = useState(null);
-            const [existingStudents, setExistingStudents] = useState([]);
-            
-            // Modals
-            const [isExportOpen, setIsExportOpen] = useState(false);
-            const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
-            const [currentAnalysisData, setCurrentAnalysisData] = useState(null);
-            const [pendingCardItem, setPendingCardItem] = useState(null);
-            const [analysisLoading, setAnalysisLoading] = useState(false);
+            const [turns, setTurns] = useState([]);
+            const [activeTurn, setActiveTurn] = useState(null);
+            const [actionableTasks, setActionableTasks] = useState([]);
+            const [studentsList, setStudentsList] = useState([]);
+            const clientRef = useRef(null);
 
-            const itemsRef = useRef(INITIAL_DATA);
-            const studentNameRef = useRef(studentName);
-
-            // Sync Refs
-            useEffect(() => { itemsRef.current = items; }, [items]);
-            useEffect(() => { studentNameRef.current = studentName; }, [studentName]);
-
-            // --- WEBSOCKET SETUP ---
             useEffect(() => {
-                const socket = new WebSocket("ws://localhost:8765");
-                setWs(socket);
-
-                socket.onopen = () => {
-                    setConnectionStatus("Connected");
-                    socket.send(JSON.stringify({
-                        message_type: "start_session",
-                        student_name: studentNameRef.current || "Unknown"
-                    }));
+                const handlers = {
+                    onStatusChange: setConnectionStatus,
+                    onPartial: (text) => setActiveTurn({ text, isPartial: true }),
+                    onTurn: (data) => {
+                        setActiveTurn(null);
+                        setTurns(prev => [...prev, { ...data, id: 'turn-' + Date.now() }]);
+                    },
+                    onAnalysis: (data) => {
+                         if (data.result && !data.result.error) {
+                             setActionableTasks(prev => [data.result, ...prev]);
+                         }
+                    },
+                    onStudentList: setStudentsList,
+                    onHealth: (data) => console.log("Health:", data)
                 };
 
-                socket.onclose = () => setConnectionStatus("Disconnected");
-                socket.onerror = () => setConnectionStatus("Error");
+                clientRef.current = new DashboardClient("ws://localhost:8765", handlers);
+                clientRef.current.connect(studentName);
+                return () => { if(clientRef.current.socket) clientRef.current.socket.close(); };
+            }, [studentName]);
 
-                socket.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    
-                    if (data.message_type === "partial") {
-                        handlePartial(data.text);
-                    } else if (data.message_type === "transcript") {
-                        handleFinal(data);
-                    } else if (data.message_type === "student_list") {
-                        setExistingStudents(data.students);
-                    } else if (data.message_type === "analysis_result") {
-                        setAnalysisLoading(false);
-                        setCurrentAnalysisData(prev => ({
-                            ...prev,
-                            ...data.result,
-                            category: prev?.category && prev.category !== 'VOCAB_GAP' ? prev.category : data.result.category
-                        }));
-                    } else if (data.message_type === "system_health") {
-                        alert(`System Health:\nCPU: ${data.data.cpu_percent}%\nMemory: ${data.data.memory_usage}%`);
-                    } else if (data.message_type === "notification") {
-                        alert(data.text);
-                    } else if (data.message_type === "session_ended") {
-                        setConnectionStatus("Ended");
-                        alert("Session has been ended by the server.");
-                    }
-                };
-
-                return () => socket.close();
-            }, []);
-
-            // --- HANDLERS ---
-            const handlePartial = (text) => {
-                setItems(prev => {
-                    const newItems = [...prev];
-                    const liveList = [...newItems[0].items];
-                    const lastItem = liveList[liveList.length - 1];
-                    
-                    if (lastItem && lastItem.isPartial) {
-                        liveList[liveList.length - 1] = { ...lastItem, text: text + "..." };
-                    } else {
-                        liveList.push({ 
-                            id: 'partial-' + Date.now(),
-                            text: text + "...", 
-                            isPartial: true,
-                            speaker: null
-                        });
-                    }
-                    newItems[0] = { ...newItems[0], items: liveList };
-                    return newItems;
-                });
-            };
-
-            const handleFinal = (data) => {
-                setItems(prev => {
-                    const newItems = [...prev];
-                    let liveList = [...newItems[0].items];
-                    const partialIndex = liveList.findIndex(item => item.isPartial);
-                    
-                    const newItem = {
-                        id: 'turn-' + data.turn_order,
-                        text: data.text,
-                        speaker: data.speaker || "Unknown",
-                        isPartial: false,
-                        fullData: data,
-                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    };
-
-                    if (partialIndex !== -1) {
-                        liveList[partialIndex] = newItem;
-                    } else {
-                        liveList.push(newItem);
-                    }
-                    
-                    newItems[0] = { ...newItems[0], items: liveList };
-                    return newItems;
-                });
-            };
-
-            const handleCardClick = (item) => {
-                if (item.isPartial) return;
-                setPendingCardItem(item);
-                setIsAnalysisOpen(true);
-                setAnalysisLoading(true);
-                setCurrentAnalysisData({ 
-                    detectedTrigger: item.text,
-                    category: 'VOCAB_GAP' 
-                }); 
-
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        message_type: "analyze_turn",
-                        text: item.text,
-                        turn_id: item.id
-                    }));
-                } else {
-                    setAnalysisLoading(false);
-                }
-            };
-
-            const handleAnalysisSave = (formData) => {
-                if (!pendingCardItem) return;
-                setItems(prev => {
-                    const newItems = [...prev];
-                    newItems[1].items.push({ 
-                        ...pendingCardItem, 
-                        id: pendingCardItem.id + '-card-' + Date.now(),
-                        analysis: formData
-                    });
-                    return newItems;
-                });
-                setIsAnalysisOpen(false);
-                setPendingCardItem(null);
-            };
-
-            // --- BUTTON ACTIONS ---
-            const handleEndSession = () => {
-                if (confirm("Are you sure you want to end the session?")) {
-                    if (ws) ws.close();
-                    setConnectionStatus("Ended");
-                }
-            };
-
-            const handleArchive = () => {
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ message_type: "archive_session" }));
-                }
-            };
-
-            const handleSystemHealth = () => {
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ message_type: "get_system_health" }));
-                }
-            };
-
-            const handleExport = (format) => {
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ message_type: "export_session", format }));
-                }
-                setIsExportOpen(false);
+            const analyzeTurn = (text, turnId) => {
+                clientRef.current.sendMessage("analyze_turn", { text, turn_id: turnId });
             };
 
             // --- RENDER ---
@@ -277,26 +197,11 @@
                             </div>
                             
                             <div className="h-6 w-px bg-white/10"></div>
+            const value = { studentName, setStudentName, connectionStatus, turns, activeTurn, actionableTasks, studentsList, analyzeTurn };
+            return <StudentContext.Provider value={value}>{children}</StudentContext.Provider>;
+        }
 
-                            <div className="flex items-center space-x-3">
-                                <div className={`flex items-center px-3 py-1 rounded-full text-xs font-medium ${connectionStatus === 'Connected' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full mr-2 ${connectionStatus === 'Connected' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></span>
-                                    {connectionStatus === 'Connected' ? 'LIVE' : connectionStatus.toUpperCase()}
-                                </div>
-                                
-                                <div className="relative group">
-                                    <select 
-                                        className="appearance-none bg-transparent text-sm font-medium text-gray-300 pl-2 pr-6 py-1 cursor-pointer focus:outline-none hover:text-white transition-colors"
-                                        value={studentName}
-                                        onChange={(e) => setStudentName(e.target.value)}
-                                    >
-                                        <option value="Unknown" disabled>Select Student...</option>
-                                        {existingStudents.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                    <span className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 material-symbols-rounded text-sm">expand_more</span>
-                                </div>
-                            </div>
-                        </div>
+        // --- COMPONENTS ---
 
                         <div className="flex items-center space-x-2">
                             <ControlButton icon="archive" label="Archive" onClick={handleArchive} />
@@ -325,106 +230,79 @@
                                 </div>
                             </div>
                         </section>
-
-                        {/* SIDEBAR (Tasks & Notes) */}
-                        <aside className="w-80 glass-panel border-l border-white/10 flex flex-col z-10">
-                            <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                                <h2 className="text-sm font-semibold text-gray-200">Action Items</h2>
-                                <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">{items[1].items.length}</span>
-                            </div>
-                            
-                            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                                {items[1].items.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center h-40 text-gray-600 space-y-2">
-                                        <span className="material-symbols-rounded text-3xl opacity-20">task</span>
-                                        <p className="text-xs">No tasks yet</p>
-                                    </div>
-                                )}
-                                {items[1].items.map((item, idx) => (
-                                    <TaskItem key={item.id || idx} item={item} />
-                                ))}
-                            </div>
-
-                            <div className="p-4 border-t border-white/5 bg-black/20">
-                                <div className="flex items-center space-x-2 mb-2">
-                                    <span className="material-symbols-rounded text-xs text-gray-500">edit_note</span>
-                                    <span className="text-xs font-medium text-gray-400">Session Notes</span>
-                                </div>
-                                <textarea 
-                                    className="w-full h-32 bg-transparent text-sm text-gray-300 placeholder-gray-700 resize-none outline-none font-mono leading-relaxed" 
-                                    placeholder="Type notes here..."
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                ></textarea>
-                            </div>
-                        </aside>
-                    </main>
-
-                    {/* MODALS */}
-                    <AnalysisModal 
-                        isOpen={isAnalysisOpen} 
-                        onClose={() => setIsAnalysisOpen(false)}
-                        onSave={handleAnalysisSave}
-                        isLoading={analysisLoading}
-                        initialData={currentAnalysisData}
-                    />
-                    
-                    <ExportModal
-                        isOpen={isExportOpen}
-                        onClose={() => setIsExportOpen(false)}
-                        onExport={handleExport}
-                    />
-                </div>
-            );
-        }
-
-        // --- COMPONENTS ---
-
-        function ControlButton({ icon, label, onClick }) {
-            return (
-                <button onClick={onClick} className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors group">
-                    <span className="material-symbols-rounded text-gray-400 group-hover:text-white text-lg">{icon}</span>
-                    <span className="text-xs font-medium text-gray-400 group-hover:text-white">{label}</span>
-                </button>
-            );
-        }
-
-        function TranscriptList({ items, onCardClick }) {
-            const bottomRef = useRef(null);
-            useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [items]);
+        function Header() {
+            const { connectionStatus, studentName, setStudentName, studentsList } = useContext(StudentContext);
 
             return (
-                <div className="flex flex-col space-y-1 pb-4">
-                    {items.map((item, index) => (
-                        <TranscriptItem key={item.id || index} item={item} onClick={() => onCardClick(item)} />
-                    ))}
-                    <div ref={bottomRef} />
-                </div>
-            );
-        }
+                <header className="px-8 py-5 flex items-center justify-between sticky top-0 z-20">
+                    <div className="glass-panel rounded-full px-6 py-3 flex items-center space-x-6 backdrop-blur-xl bg-white/5 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+                        <h1 className="text-xl font-bold tracking-wider text-white text-shadow-glow">SEMANTIC SURFER</h1>
 
-        function TranscriptItem({ item, onClick }) {
-            const isTutor = item.speaker && (item.speaker.includes("Aaron") || item.speaker === "A");
-            
-            if (item.isPartial) {
-                return (
-                    <div className="flex justify-center py-2 opacity-50">
-                        <span className="text-xs text-gray-500 animate-pulse font-mono">{item.text}</span>
+                        <div className={`flex items-center px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase ${connectionStatus === 'Connected' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}`}>
+                            {connectionStatus === 'Connected' ? 'ONLINE' : 'OFFLINE'}
+                        </div>
+
+                        <div className="h-4 w-px bg-white/20"></div>
+
+                        <div className="relative group">
+                            <select
+                                className="appearance-none bg-transparent text-sm font-medium text-white/80 pl-2 pr-8 py-1 cursor-pointer focus:outline-none hover:text-white transition-colors"
+                                value={studentName}
+                                onChange={(e) => setStudentName(e.target.value)}
+                            >
+                                <option className="bg-gray-900" value="Unknown" disabled>Select Student...</option>
+                                {studentsList.map(s => <option className="bg-gray-900" key={s} value={s}>{s}</option>)}
+                            </select>
+                            <span className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-white/50 material-symbols-rounded text-sm">expand_more</span>
+                        </div>
                     </div>
-                );
-            }
 
+                    <div className="flex items-center space-x-3">
+                        <button className="glass-button rounded-full p-3 hover:bg-white/20 group">
+                            <span className="material-symbols-rounded text-white/70 group-hover:text-white transition-colors">archive</span>
+                        </button>
+                        <button className="glass-button rounded-full p-3 hover:bg-white/20 group">
+                            <span className="material-symbols-rounded text-white/70 group-hover:text-white transition-colors">settings</span>
+                        </button>
+                    </div>
+                </header>
+            );
+        }
+
+        function TaskCard({ task }) {
+            return (
+                <motion.div
+                    initial={{ opacity: 0, x: 20, backdropFilter: "blur(0px)" }}
+                    animate={{ opacity: 1, x: 0, backdropFilter: "blur(12px)" }}
+                    className="glass-bubble rounded-2xl p-5 mb-4 group hover:bg-white/10 transition-all border border-white/10 hover:border-white/30"
+                >
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-widest bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.2)]">
+                            {task.category || "General"}
+                        </span>
+                        <span className="material-symbols-rounded text-white/30 text-sm group-hover:text-white/80 transition-colors cursor-pointer">check_circle</span>
+                    </div>
+                    <div className="mb-2">
+                        <p className="text-sm text-white font-medium leading-relaxed text-shadow-sm">{task.suggestedCorrection}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-white/60 font-light leading-relaxed">{task.explanation}</p>
+                    </div>
+                </motion.div>
+            );
+        }
+
+        function ChatBubble({ turn, isPartial }) {
+            const isTutor = turn.speaker && (turn.speaker === 'Aaron' || turn.speaker === 'A');
             return (
                 <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex w-full group ${isTutor ? 'justify-end' : 'justify-start'}`}
-                    onClick={onClick}
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    className={`flex w-full mb-6 ${isTutor ? 'justify-end' : 'justify-start'}`}
                 >
-                    <div className={`max-w-[70%] flex flex-col ${isTutor ? 'items-end' : 'items-start'}`}>
-                        {/* Bubble */}
+                    <div className={`max-w-[75%] flex flex-col ${isTutor ? 'items-end' : 'items-start'}`}>
                         <div className={`
-                            px-4 py-2 rounded-2xl text-[15px] leading-relaxed cursor-pointer transition-all shadow-sm
+                            px-6 py-4 rounded-3xl text-[15px] leading-relaxed backdrop-blur-md shadow-lg border border-white/10
                             ${isTutor 
                                 ? 'bg-[var(--bubble-sent)] text-white rounded-tr-sm hover:bg-red-600'
                                 : 'bg-[var(--bubble-received)] text-gray-100 rounded-tl-sm hover:bg-[#2C2C2E] border border-white/5'}
@@ -436,15 +314,15 @@
                         <div className={`
                             flex items-center space-x-2 mt-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200
                             ${isTutor ? 'flex-row-reverse space-x-reverse' : 'flex-row'}
+                                ? 'bg-white/10 text-white rounded-tr-sm'
+                                : 'bg-black/20 text-white/90 rounded-tl-sm'}
+                            ${isPartial ? 'animate-pulse' : ''}
                         `}>
-                            <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                                {isTutor ? 'Project Lead' : 'Team Analyst'}
-                            </span>
-                            <span className="text-[10px] text-gray-600">•</span>
-                            <span className="text-[10px] text-gray-600 font-mono">
-                                {item.timestamp || "Now"}
-                            </span>
+                            {turn.text}
                         </div>
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-2 px-2">
+                            {isTutor ? 'TUTOR' : 'STUDENT'}
+                        </span>
                     </div>
                 </motion.div>
             );
@@ -466,26 +344,27 @@
                 </div>
             );
         }
+        function Dashboard() {
+            const { turns, activeTurn, actionableTasks } = useContext(StudentContext);
+            const scrollRef = useRef(null);
 
-        function AnalysisModal({ isOpen, onClose, onSave, isLoading, initialData }) {
-            const [formData, setFormData] = useState({ category: 'VOCAB_GAP', suggestedCorrection: '', explanation: '', detectedTrigger: '' });
-            
             useEffect(() => {
-                if (initialData) setFormData(prev => ({ ...prev, ...initialData }));
-            }, [initialData]);
-
-            if (!isOpen) return null;
+                if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }, [turns, activeTurn]);
 
             return (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <motion.div 
-                        initial={{ scale: 0.95, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl shadow-black/50"
-                    >
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-semibold text-white">Create Card</h3>
-                            <button onClick={onClose} className="text-gray-500 hover:text-white material-symbols-rounded">close</button>
+                <main className="flex-grow flex overflow-hidden px-8 pb-8 gap-6">
+                    {/* LEFT: CHAT */}
+                    <section className="flex-1 glass-panel rounded-[2.5rem] flex flex-col relative overflow-hidden">
+                        <div className="flex-1 overflow-y-auto p-8 scrollbar-hide" ref={scrollRef}>
+                            {turns.length === 0 && !activeTurn && (
+                                <div className="h-full flex flex-col items-center justify-center text-white/20">
+                                    <span className="material-symbols-rounded text-6xl mb-4">graphic_eq</span>
+                                    <p className="text-sm font-light tracking-widest uppercase">Waiting for audio stream...</p>
+                                </div>
+                            )}
+                            {turns.map((t) => <ChatBubble key={t.id} turn={t} />)}
+                            {activeTurn && <ChatBubble turn={activeTurn} isPartial={true} />}
                         </div>
 
                         {isLoading ? (
@@ -524,7 +403,25 @@
                                             placeholder="Correction..."
                                         />
                                     </div>
+                        {/* INPUT BAR */}
+                        <div className="p-6">
+                            <div className="glass-bubble rounded-full px-6 py-4 flex items-center space-x-4">
+                                <span className="material-symbols-rounded text-white/50 animate-pulse">mic</span>
+                                <div className="h-1 flex-1 bg-white/10 rounded-full overflow-hidden">
+                                    <div className="h-full w-1/3 bg-white/30 rounded-full animate-progress"></div>
                                 </div>
+                                <span className="text-xs text-white/40 font-mono">LISTENING</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* RIGHT: ACTIONABLE TASKS */}
+                    <aside className="w-[400px] flex flex-col">
+                        <div className="glass-panel rounded-[2.5rem] flex-1 flex flex-col overflow-hidden p-6">
+                            <div className="flex items-center justify-between mb-6 px-2">
+                                <h2 className="text-sm font-bold text-white tracking-widest uppercase text-shadow-glow">Analysis</h2>
+                                <span className="bg-white/10 px-2 py-0.5 rounded-full text-[10px] font-bold text-white/60 border border-white/10">{actionableTasks.length}</span>
+                            </div>
 
                                 <div className="pt-4 flex justify-end space-x-3">
                                     <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">Cancel</button>
@@ -532,36 +429,35 @@
                                         Save Card
                                     </button>
                                 </div>
+                            <div className="flex-1 overflow-y-auto scrollbar-hide -mx-2 px-2">
+                                <AnimatePresence>
+                                    {actionableTasks.map((task, i) => (
+                                        <TaskCard key={i} task={task} />
+                                    ))}
+                                </AnimatePresence>
+                                {actionableTasks.length === 0 && (
+                                    <div className="mt-10 text-center opacity-30">
+                                        <div className="w-16 h-16 border border-white/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <span className="material-symbols-rounded text-2xl">auto_awesome</span>
+                                        </div>
+                                        <p className="text-xs font-light">AI insights will appear here</p>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </motion.div>
-                </div>
+                        </div>
+                    </aside>
+                </main>
             );
         }
 
-        function ExportModal({ isOpen, onClose, onExport }) {
-            if (!isOpen) return null;
+        function App() {
             return (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-                    <motion.div 
-                        initial={{ scale: 0.95, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-6 w-80 shadow-2xl"
-                    >
-                        <h3 className="text-lg font-semibold text-white text-center mb-6">Export Session</h3>
-                        <div className="space-y-3">
-                            <button onClick={() => onExport('json')} className="w-full flex items-center justify-between p-4 bg-[#2C2C2E] hover:bg-[#3A3A3C] rounded-xl transition-colors group">
-                                <span className="font-medium text-gray-200">JSON Format</span>
-                                <span className="material-symbols-rounded text-gray-500 group-hover:text-white">data_object</span>
-                            </button>
-                            <button onClick={() => onExport('markdown')} className="w-full flex items-center justify-between p-4 bg-[#2C2C2E] hover:bg-[#3A3A3C] rounded-xl transition-colors group">
-                                <span className="font-medium text-gray-200">Markdown</span>
-                                <span className="material-symbols-rounded text-gray-500 group-hover:text-white">markdown</span>
-                            </button>
-                        </div>
-                        <button onClick={onClose} className="w-full mt-6 text-sm text-gray-500 hover:text-white transition-colors">Cancel</button>
-                    </motion.div>
-                </div>
+                <StudentProvider>
+                    <div className="flex flex-col h-full relative z-10">
+                        <Header />
+                        <Dashboard />
+                    </div>
+                </StudentProvider>
             );
         }
 
