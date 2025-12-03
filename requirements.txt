@@ -7,3 +7,4 @@ psutil
 httpx
 textblob
 supabase
+pydantic
