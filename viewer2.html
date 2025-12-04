@@ -4,7 +4,6 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Semantic Surfer - Crimson Glass</title>
-    <title>Project Sentinel: Liquid Glass</title>
     
     <!-- React & Framer Motion -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -13,7 +12,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:wght,FILL@300,1&amp;display=swap" rel="stylesheet"/>
 
     <!-- Tailwind CSS -->
@@ -21,89 +20,253 @@
     
     <style type="text/tailwindcss">
         @layer base {
-            html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+            html { font-family: "Google Sans Flex", -apple-system, sans-serif; }
         }
 
-        /* --- LIQUID GLASS THEME --- */
+        /* --- CRIMSON GLASS THEME --- */
         :root {
-            --bg-primary: #000000;
-            --glass-panel: rgba(28, 28, 30, 0.65);
+            --glass-surface: rgba(255, 255, 255, 0.05);
             --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-red: #FF453A;
-            --accent-orange: #FF8C00;
-            --text-primary: #FFFFFF;
-            --text-secondary: #8E8E93;
-            --bubble-sent: #FF453A; /* Red for sent messages */
-            --bubble-received: #1C1C1E;
-            --glass-border: rgba(255, 255, 255, 0.15);
-            --glass-surface: rgba(255, 255, 255, 0.03);
-            --glass-highlight: rgba(255, 255, 255, 0.08);
-            --text-glow: 0 0 10px rgba(255,255,255,0.3);
+            --glass-highlight: rgba(255, 255, 255, 0.2);
+            --crimson-glow: rgba(255, 59, 48, 0.4);
+            --metal-shine: linear-gradient(135deg, #e0e0e0 0%, #9ca3af 50%, #4b5563 100%);
         }
 
-        /* Animated Background */
-        .liquid-bg {
-            background: radial-gradient(circle at 0% 0%, #1a2a6c, #b21f1f, #fdbb2d);
-            background-size: 400% 400%;
-            animation: gradientBG 20s ease infinite;
+        /* Animated Background (Restored Crimson) */
+        .crimson-bg {
+            background: radial-gradient(circle at 50% 50%, #1a0505, #000000);
+            position: relative;
         }
 
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        .crimson-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.6;
+            animation: orbFloat 20s infinite ease-in-out;
         }
 
-        /* Glass Utility Classes */
-        .glass-panel {
-            background: var(--glass-surface);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
         }
 
-        .glass-bubble {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-        }
-
-        .glass-button {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(5px);
-            transition: all 0.3s ease;
-        }
-        .glass-button:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.4);
-            box-shadow: 0 0 15px rgba(255,255,255,0.2);
-            transform: translateY(-1px);
-        }
-
-        .text-shadow-sm { text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-        .text-shadow-glow { text-shadow: 0 0 10px rgba(255,255,255,0.4); }
+        /* Electron Window Controls */
+        .app-drag-region { -webkit-app-region: drag; }
+        .app-no-drag { -webkit-app-region: no-drag; }
 
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Neomorphic / Glass Utilities */
+        .glass-panel {
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            box-shadow:
+                0 4px 30px rgba(0, 0, 0, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-panel-heavy {
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow:
+                0 20px 50px rgba(0,0,0,0.8),
+                inset 0 1px 1px rgba(255,255,255,0.1);
+        }
+
+        /* Raised Neomorphic Text */
+        .text-neo {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            letter-spacing: 0.05em;
+        }
+
+        /* Liquid Metal Animation */
+        .liquid-blob {
+            background: radial-gradient(circle at 30% 30%, #ffffff, #9ca3af, #4b5563);
+            box-shadow:
+                inset -2px -2px 6px rgba(0,0,0,0.5),
+                inset 2px 2px 6px rgba(255,255,255,1),
+                0 0 15px rgba(255,255,255,0.2);
+            animation: morph 6s ease-in-out infinite;
+        }
+
+        @keyframes morph {
+            0% { border-radius: 60% 40% 30% 70%/60% 30% 70% 40%; }
+            50% { border-radius: 30% 60% 70% 40%/50% 60% 30% 60%; }
+            100% { border-radius: 60% 40% 30% 70%/60% 30% 70% 40%; }
+        }
+
+        /* Dropdown Styles */
+        .drop { position: relative; cursor: pointer; z-index: 50; }
+        .drop .label {
+            color: #e5e5e5;
+            padding: 8px 24px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow:
+                inset 1px 1px 1px rgba(255,255,255,0.1),
+                0 4px 10px rgba(0,0,0,0.3);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex; align-items: center; gap: 8px;
+            backdrop-filter: blur(10px);
+        }
+        .drop:hover .label {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+
+        .drop .options {
+            position: absolute; top: 110%; left: 0; width: 100%; min-width: 200px;
+            background: rgba(15, 15, 15, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 6px;
+            transform: scale(0.9) translateY(-10px);
+            opacity: 0; pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+        .drop.liquid .options {
+            transform: scale(1) translateY(0);
+            opacity: 1; pointer-events: all;
+        }
+        .option-item {
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: #a1a1aa;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .option-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
     </style>
 </head>
-<body class="bg-black text-white min-h-screen flex flex-col overflow-hidden selection:bg-red-500 selection:text-white">
-    <div id="root" class="flex flex-col h-screen"></div>
-<body class="liquid-bg text-white min-h-screen flex flex-col overflow-hidden">
-    <!-- Overlay for slight darkening to improve text readability -->
-    <div class="absolute inset-0 bg-black/30 pointer-events-none z-0"></div>
+<body class="crimson-bg text-white min-h-screen flex flex-col overflow-hidden selection:bg-red-500/50 selection:text-white">
+    <!-- Animated Orbs for "Moving Crimson" Effect -->
+    <div class="crimson-orb bg-red-600/20 w-96 h-96 top-0 left-1/4 mix-blend-screen" style="animation-delay: 0s"></div>
+    <div class="crimson-orb bg-orange-600/10 w-[500px] h-[500px] bottom-0 right-0 mix-blend-screen" style="animation-delay: -5s"></div>
+    <div class="crimson-orb bg-red-900/30 w-[600px] h-[600px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mix-blend-overlay" style="animation-delay: -10s"></div>
 
     <div id="root" class="flex flex-col h-screen relative z-10"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, createContext, useContext } = React;
+        const { useState, useEffect, useRef, createContext, useContext, useMemo } = React;
         const { motion, AnimatePresence } = window.Motion;
 
-        // --- MODULE: DashboardClient (Networking Layer) ---
+        // --- STATS UTILS ---
+        const calculateWPM = (turns) => {
+            if (turns.length < 2) return 0;
+            const now = Date.now();
+            const oneMinuteAgo = now - 60000;
+            // Filter turns from last minute (approximate by arrival time if we don't have timestamps,
+            // but let's assume valid data or just use simple text length / time for session)
+            // Simplified: Total words / Total minutes of session
+            const words = turns.reduce((acc, t) => acc + t.text.split(' ').length, 0);
+            const durationMin = (now - window.sessionStartTime) / 60000;
+            return durationMin > 0 ? Math.round(words / durationMin) : 0;
+        };
+
+        const calculateTalkTime = (turns) => {
+            // Mocking talk time based on word count ratio as proxy for time
+            const studentWords = turns.filter(t => t.speaker !== 'Aaron' && t.speaker !== 'A').reduce((acc, t) => acc + t.text.split(' ').length, 0);
+            const tutorWords = turns.filter(t => t.speaker === 'Aaron' || t.speaker === 'A').reduce((acc, t) => acc + t.text.split(' ').length, 0);
+            const total = studentWords + tutorWords;
+            if (total === 0) return { student: '0%', tutor: '0%' };
+            return {
+                student: Math.round((studentWords / total) * 100) + '%',
+                tutor: Math.round((tutorWords / total) * 100) + '%'
+            };
+        };
+
+        // --- CONTEXT ---
+        const StudentContext = createContext();
+
+        function StudentProvider({ children }) {
+            const [studentName, setStudentName] = useState("Unknown");
+            const [connectionStatus, setConnectionStatus] = useState("Disconnected");
+            const [turns, setTurns] = useState([]);
+            const [activeTurn, setActiveTurn] = useState(null);
+            const [actionableTasks, setActionableTasks] = useState([]);
+            const [studentsList, setStudentsList] = useState([]);
+            const [newTaskFlash, setNewTaskFlash] = useState(false);
+            const clientRef = useRef(null);
+
+            // Session Stats State
+            const [wpm, setWpm] = useState(0);
+            const [talkTime, setTalkTime] = useState({ student: '50%', tutor: '50%' });
+
+            useEffect(() => {
+                window.sessionStartTime = Date.now();
+                const handlers = {
+                    onStatusChange: setConnectionStatus,
+                    onPartial: (text) => setActiveTurn({ text, isPartial: true }),
+                    onTurn: (data) => {
+                        setActiveTurn(null);
+                        setTurns(prev => {
+                            const newTurns = [...prev, { ...data, id: 'turn-' + Date.now() + Math.random() }];
+                            // Update Stats
+                            setWpm(calculateWPM(newTurns));
+                            setTalkTime(calculateTalkTime(newTurns));
+                            return newTurns;
+                        });
+                    },
+                    onAnalysis: () => {}, // No backend analysis trigger for now
+                    onStudentList: setStudentsList,
+                    onHealth: (data) => console.log("Health:", data)
+                };
+
+                clientRef.current = new DashboardClient("ws://localhost:8765", handlers);
+                clientRef.current.connect(studentName);
+                setTimeout(() => clientRef.current.sendMessage("get_students"), 1000);
+
+                return () => { if(clientRef.current.socket) clientRef.current.socket.close(); };
+            }, [studentName]);
+
+            const addTask = (text, type="Marked") => {
+                const newTask = {
+                    id: Date.now(),
+                    text: text,
+                    category: type,
+                    notes: ""
+                };
+                setActionableTasks(prev => [newTask, ...prev]);
+
+                // Trigger Flash
+                setNewTaskFlash(true);
+                setTimeout(() => setNewTaskFlash(false), 2000);
+            };
+
+            const toggleAlwaysOnTop = () => {
+                if (window.electron && window.electron.toggleAlwaysOnTop) {
+                    window.electron.toggleAlwaysOnTop();
+                }
+            };
+
+            const value = {
+                studentName, setStudentName,
+                connectionStatus,
+                turns, activeTurn,
+                actionableTasks, addTask, newTaskFlash,
+                studentsList,
+                wpm, talkTime
+            };
+            return <StudentContext.Provider value={value}>{children}</StudentContext.Provider>;
+        }
+
+        // --- DASHBOARD CLIENT (Re-declared for scope) ---
         class DashboardClient {
             constructor(url, handlers) {
                 this.url = url;
@@ -111,7 +274,6 @@
                 this.socket = null;
                 this.reconnectInterval = 3000;
             }
-
             connect(studentName) {
                 this.socket = new WebSocket(this.url);
                 this.socket.onopen = () => {
@@ -127,7 +289,6 @@
                     try { this.handleMessage(JSON.parse(event.data)); } catch (e) { console.error("Parse Error:", e); }
                 };
             }
-
             handleMessage(data) {
                 switch(data.message_type) {
                     case "partial": this.handlers.onPartial(data.text); break;
@@ -137,7 +298,6 @@
                     case "system_health": this.handlers.onHealth(data.data); break;
                 }
             }
-
             sendMessage(type, payload = {}) {
                 if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                     this.socket.send(JSON.stringify({ message_type: type, ...payload }));
@@ -145,306 +305,343 @@
             }
         }
 
-        // --- MODULE: StudentContext (State Management) ---
-        const StudentContext = createContext();
-
-        function StudentProvider({ children }) {
-            const [studentName, setStudentName] = useState("Unknown");
-            const [connectionStatus, setConnectionStatus] = useState("Disconnected");
-            const [turns, setTurns] = useState([]);
-            const [activeTurn, setActiveTurn] = useState(null);
-            const [actionableTasks, setActionableTasks] = useState([]);
-            const [studentsList, setStudentsList] = useState([]);
-            const clientRef = useRef(null);
-
-            useEffect(() => {
-                const handlers = {
-                    onStatusChange: setConnectionStatus,
-                    onPartial: (text) => setActiveTurn({ text, isPartial: true }),
-                    onTurn: (data) => {
-                        setActiveTurn(null);
-                        setTurns(prev => [...prev, { ...data, id: 'turn-' + Date.now() }]);
-                    },
-                    onAnalysis: (data) => {
-                         if (data.result && !data.result.error) {
-                             setActionableTasks(prev => [data.result, ...prev]);
-                         }
-                    },
-                    onStudentList: setStudentsList,
-                    onHealth: (data) => console.log("Health:", data)
-                };
-
-                clientRef.current = new DashboardClient("ws://localhost:8765", handlers);
-                clientRef.current.connect(studentName);
-                return () => { if(clientRef.current.socket) clientRef.current.socket.close(); };
-            }, [studentName]);
-
-            const analyzeTurn = (text, turnId) => {
-                clientRef.current.sendMessage("analyze_turn", { text, turn_id: turnId });
-            };
-
-            // --- RENDER ---
-            return (
-                <div className="flex flex-col h-full bg-black">
-                    {/* HEADER */}
-                    <header className="px-6 py-4 glass-panel flex items-center justify-between sticky top-0 z-20">
-                        <div className="flex items-center space-x-6">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center shadow-lg shadow-red-500/30">
-                                    <span className="material-symbols-rounded text-white text-lg">waves</span>
-                                </div>
-                                <h1 className="text-xl font-semibold tracking-tight text-white">Semantic Surf</h1>
-                            </div>
-                            
-                            <div className="h-6 w-px bg-white/10"></div>
-            const value = { studentName, setStudentName, connectionStatus, turns, activeTurn, actionableTasks, studentsList, analyzeTurn };
-            return <StudentContext.Provider value={value}>{children}</StudentContext.Provider>;
-        }
-
         // --- COMPONENTS ---
 
-                        <div className="flex items-center space-x-2">
-                            <ControlButton icon="archive" label="Archive" onClick={handleArchive} />
-                            <ControlButton icon="download" label="Export" onClick={() => setIsExportOpen(true)} />
-                            <ControlButton icon="ecg_heart" label="Health" onClick={handleSystemHealth} />
-                            <button onClick={handleEndSession} className="ml-2 px-4 py-1.5 text-xs font-semibold text-white bg-red-500/80 hover:bg-red-500 rounded-full transition-all shadow-lg shadow-red-500/20 backdrop-blur-sm">
-                                End Session
-                            </button>
-                        </div>
-                    </header>
+        function LiquidNotes() {
+            const { addTask } = useContext(StudentContext);
+            const [isExpanded, setIsExpanded] = useState(false);
+            const [noteText, setNoteText] = useState("");
 
-                    {/* MAIN CONTENT */}
-                    <main className="flex-grow flex overflow-hidden relative">
-                        {/* TRANSCRIPT AREA */}
-                        <section className="flex-1 flex flex-col relative">
-                            <div className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-hide">
-                                <TranscriptList items={items[0].items} onCardClick={handleCardClick} />
-                            </div>
-                            
-                            {/* INPUT AREA (Placeholder for future) */}
-                            <div className="p-4 glass-panel border-t border-white/5">
-                                <div className="flex items-center space-x-3 bg-white/5 rounded-2xl px-4 py-3 border border-white/5 focus-within:border-red-500/50 transition-colors">
-                                    <span className="material-symbols-rounded text-gray-500">mic</span>
-                                    <input type="text" placeholder="Listening..." className="bg-transparent border-none outline-none text-sm text-white w-full placeholder-gray-600" disabled />
-                                    <span className="material-symbols-rounded text-gray-500">graphic_eq</span>
-                                </div>
-                            </div>
-                        </section>
-        function Header() {
-            const { connectionStatus, studentName, setStudentName, studentsList } = useContext(StudentContext);
+            const handleDone = () => {
+                if (noteText.trim()) {
+                    addTask(noteText, "Manual Note");
+                    setNoteText("");
+                }
+                setIsExpanded(false);
+            };
 
             return (
-                <header className="px-8 py-5 flex items-center justify-between sticky top-0 z-20">
-                    <div className="glass-panel rounded-full px-6 py-3 flex items-center space-x-6 backdrop-blur-xl bg-white/5 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
-                        <h1 className="text-xl font-bold tracking-wider text-white text-shadow-glow">SEMANTIC SURFER</h1>
+                <>
+                    {/* MINI STATE: Docked Widget */}
+                    {!isExpanded && (
+                        <motion.div
+                            layoutId="liquid-note"
+                            className="glass-panel rounded-xl p-3 flex flex-col gap-2 relative group overflow-hidden"
+                            style={{ minHeight: '80px' }}
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Quick Note</span>
+                                <button
+                                    onClick={() => setIsExpanded(true)}
+                                    className="text-white/40 hover:text-white transition-colors"
+                                >
+                                    <span className="material-symbols-rounded text-lg">open_in_full</span>
+                                </button>
+                            </div>
+                            <textarea
+                                className="bg-transparent border-none text-xs text-white resize-none outline-none placeholder-white/20 w-full"
+                                placeholder="Type a note..."
+                                value={noteText}
+                                onChange={(e) => setNoteText(e.target.value)}
+                                rows={2}
+                            />
+                        </motion.div>
+                    )}
 
-                        <div className={`flex items-center px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase ${connectionStatus === 'Connected' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}`}>
-                            {connectionStatus === 'Connected' ? 'ONLINE' : 'OFFLINE'}
+                    {/* MAXI STATE: Crimson Glass Overlay */}
+                    <AnimatePresence>
+                        {isExpanded && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/80 backdrop-blur-md">
+                                <motion.div
+                                    layoutId="liquid-note"
+                                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                    className="w-full max-w-5xl h-[70vh] glass-panel-heavy rounded-[3rem] p-10 flex flex-col shadow-[0_0_150px_rgba(220,20,20,0.15)] relative overflow-hidden border border-red-500/10"
+                                >
+                                    {/* Animated Crimson Glow Background */}
+                                    <div className="absolute -top-40 -right-40 w-96 h-96 bg-red-600/10 rounded-full blur-[100px] pointer-events-none animate-pulse"></div>
+                                    <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-orange-600/10 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+                                    <div className="flex justify-between items-center mb-10 z-10 relative">
+                                        <h2 className="text-3xl font-bold text-white tracking-tighter flex items-center gap-4 text-neo">
+                                            <span className="w-5 h-5 rounded-full bg-gradient-to-br from-red-500 to-orange-600 shadow-[0_0_20px_rgba(255,69,58,0.5)] animate-pulse"></span>
+                                            INSTRUCTOR NOTE
+                                        </h2>
+                                        <button
+                                            onClick={handleDone}
+                                            className="px-8 py-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-red-500/30 hover:shadow-[0_0_30px_rgba(220,20,20,0.2)] text-white rounded-full font-bold tracking-widest transition-all duration-300 active:scale-95"
+                                        >
+                                            DONE
+                                        </button>
+                                    </div>
+
+                                    <textarea
+                                        className="flex-1 bg-transparent border-none text-6xl font-bold text-white/90 resize-none outline-none placeholder-white/10 leading-tight drop-shadow-lg"
+                                        placeholder="Write for the student..."
+                                        value={noteText}
+                                        onChange={(e) => setNoteText(e.target.value)}
+                                        autoFocus
+                                    />
+
+                                    <div className="mt-8 flex justify-between items-end z-10">
+                                        <div className="h-1 flex-1 bg-gradient-to-r from-red-500/0 via-red-500/20 to-red-500/0"></div>
+                                        <div className="ml-6 text-right text-white/30 font-mono text-xs tracking-[0.3em] uppercase">
+                                            High Visibility Mode
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>
+                </>
+            );
+        }
+
+        function Header() {
+            const { connectionStatus, studentName, setStudentName, studentsList, wpm, talkTime, newTaskFlash } = useContext(StudentContext);
+            const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(true);
+
+            const toggleTop = () => {
+                setIsAlwaysOnTop(!isAlwaysOnTop);
+                if (window.electron && window.electron.toggleAlwaysOnTop) {
+                    window.electron.toggleAlwaysOnTop();
+                }
+            };
+
+            return (
+                <header className="app-drag-region px-8 py-5 flex items-center justify-between sticky top-0 z-40">
+                    <div className="flex items-center space-x-8">
+                        {/* LOGO & LIQUID BLOB */}
+                        <div className="flex items-center gap-4 group">
+                            <div className="w-10 h-10 liquid-blob flex items-center justify-center">
+                                <span className="material-symbols-rounded text-gray-800 text-lg opacity-80">graphic_eq</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <h1 className="text-lg font-bold tracking-[0.2em] text-neo text-white">SEMANTIC SURFER</h1>
+                                <span className="text-[9px] text-white/40 tracking-[0.4em] font-light pl-0.5">PROJECT SENTINEL</span>
+                            </div>
                         </div>
 
-                        <div className="h-4 w-px bg-white/20"></div>
-
-                        <div className="relative group">
-                            <select
-                                className="appearance-none bg-transparent text-sm font-medium text-white/80 pl-2 pr-8 py-1 cursor-pointer focus:outline-none hover:text-white transition-colors"
+                        {/* STUDENT DROPDOWN */}
+                        <div className="app-no-drag">
+                            <LiquidDropdown
+                                options={studentsList}
                                 value={studentName}
-                                onChange={(e) => setStudentName(e.target.value)}
-                            >
-                                <option className="bg-gray-900" value="Unknown" disabled>Select Student...</option>
-                                {studentsList.map(s => <option className="bg-gray-900" key={s} value={s}>{s}</option>)}
-                            </select>
-                            <span className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-white/50 material-symbols-rounded text-sm">expand_more</span>
+                                onChange={setStudentName}
+                            />
+                        </div>
+
+                        {/* STATS DISPLAY */}
+                        <div className="hidden md:flex items-center space-x-6 px-6 border-l border-white/10">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold">Pace</span>
+                                <span className="text-sm font-mono text-white/80">{wpm} <span className="text-[10px]">WPM</span></span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold">Talk Ratio</span>
+                                <div className="flex items-center gap-1 text-[10px] font-mono mt-0.5">
+                                    <span className="text-red-400">{talkTime.tutor}</span>
+                                    <span className="text-white/20">/</span>
+                                    <span className="text-blue-400">{talkTime.student}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
-                        <button className="glass-button rounded-full p-3 hover:bg-white/20 group">
-                            <span className="material-symbols-rounded text-white/70 group-hover:text-white transition-colors">archive</span>
-                        </button>
-                        <button className="glass-button rounded-full p-3 hover:bg-white/20 group">
-                            <span className="material-symbols-rounded text-white/70 group-hover:text-white transition-colors">settings</span>
+                    {/* RIGHT CONTROLS */}
+                    <div className="flex items-center gap-4 app-no-drag">
+                         {/* TASK INDICATOR */}
+                         <div className={`transition-all duration-500 ${newTaskFlash ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+                            <div className="bg-orange-500/20 border border-orange-500 text-orange-400 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider shadow-[0_0_15px_rgba(249,115,22,0.4)]">
+                                ITEM CAPTURED
+                            </div>
+                         </div>
+
+                         <div className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border backdrop-blur-md ${connectionStatus === 'Connected' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-red-900/30 text-red-400 border-red-500/30'}`}>
+                            {connectionStatus === 'Connected' ? 'LIVE' : 'OFFLINE'}
+                        </div>
+
+                        <button
+                            onClick={toggleTop}
+                            className={`glass-button w-9 h-9 rounded-full flex items-center justify-center transition-all border border-white/10 hover:bg-white/10 ${isAlwaysOnTop ? 'text-white shadow-[0_0_10px_rgba(255,255,255,0.3)]' : 'text-white/30'}`}
+                        >
+                            <span className="material-symbols-rounded text-base">vertical_align_top</span>
                         </button>
                     </div>
                 </header>
             );
         }
 
-        function TaskCard({ task }) {
-            return (
-                <motion.div
-                    initial={{ opacity: 0, x: 20, backdropFilter: "blur(0px)" }}
-                    animate={{ opacity: 1, x: 0, backdropFilter: "blur(12px)" }}
-                    className="glass-bubble rounded-2xl p-5 mb-4 group hover:bg-white/10 transition-all border border-white/10 hover:border-white/30"
-                >
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-widest bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.2)]">
-                            {task.category || "General"}
-                        </span>
-                        <span className="material-symbols-rounded text-white/30 text-sm group-hover:text-white/80 transition-colors cursor-pointer">check_circle</span>
-                    </div>
-                    <div className="mb-2">
-                        <p className="text-sm text-white font-medium leading-relaxed text-shadow-sm">{task.suggestedCorrection}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-white/60 font-light leading-relaxed">{task.explanation}</p>
-                    </div>
-                </motion.div>
-            );
-        }
+        function LiquidDropdown({ options, value, onChange, placeholder = "Select..." }) {
+            const [isOpen, setIsOpen] = useState(false);
+            const dropdownRef = useRef(null);
 
-        function ChatBubble({ turn, isPartial }) {
-            const isTutor = turn.speaker && (turn.speaker === 'Aaron' || turn.speaker === 'A');
-            return (
-                <motion.div 
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    className={`flex w-full mb-6 ${isTutor ? 'justify-end' : 'justify-start'}`}
-                >
-                    <div className={`max-w-[75%] flex flex-col ${isTutor ? 'items-end' : 'items-start'}`}>
-                        <div className={`
-                            px-6 py-4 rounded-3xl text-[15px] leading-relaxed backdrop-blur-md shadow-lg border border-white/10
-                            ${isTutor 
-                                ? 'bg-[var(--bubble-sent)] text-white rounded-tr-sm hover:bg-red-600'
-                                : 'bg-[var(--bubble-received)] text-gray-100 rounded-tl-sm hover:bg-[#2C2C2E] border border-white/5'}
-                        `}>
-                            {item.text}
-                        </div>
-                        
-                        {/* Metadata (Hidden by default, visible on hover) */}
-                        <div className={`
-                            flex items-center space-x-2 mt-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200
-                            ${isTutor ? 'flex-row-reverse space-x-reverse' : 'flex-row'}
-                                ? 'bg-white/10 text-white rounded-tr-sm'
-                                : 'bg-black/20 text-white/90 rounded-tl-sm'}
-                            ${isPartial ? 'animate-pulse' : ''}
-                        `}>
-                            {turn.text}
-                        </div>
-                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-2 px-2">
-                            {isTutor ? 'TUTOR' : 'STUDENT'}
-                        </span>
-                    </div>
-                </motion.div>
-            );
-        }
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                        setIsOpen(false);
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, []);
 
-        function TaskItem({ item }) {
-            const analysis = item.analysis || {};
             return (
-                <div className="group bg-[#1C1C1E] hover:bg-[#2C2C2E] rounded-xl p-3 border border-white/5 hover:border-orange-500/30 transition-all cursor-pointer">
-                    <div className="flex items-start justify-between mb-1">
-                        <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider bg-orange-500/10 px-1.5 py-0.5 rounded">
-                            {analysis.category || "TASK"}
-                        </span>
-                        <span className="text-[10px] text-gray-600 font-mono">{item.timestamp}</span>
+                <div
+                    ref={dropdownRef}
+                    className={`drop ${isOpen ? 'liquid' : ''}`}
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    <div className="label group">
+                        <span className="material-symbols-rounded text-base text-white/70">person</span>
+                        <span className="text-neo">{value === "Unknown" ? placeholder : value}</span>
+                        <span className="material-symbols-rounded text-sm ml-auto opacity-50 group-hover:translate-y-0.5 transition-transform">expand_more</span>
                     </div>
-                    <p className="text-sm text-gray-200 leading-snug">
-                        {analysis.suggestedCorrection || item.text}
-                    </p>
+                    <div className="options">
+                        <div className="text-[9px] uppercase tracking-widest text-white/20 px-3 py-2 font-bold">Available Profiles</div>
+                        {options.map((opt) => (
+                            <div
+                                key={opt}
+                                className="option-item flex items-center gap-2"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onChange(opt);
+                                    setIsOpen(false);
+                                }}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
+                                {opt}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             );
         }
-        function Dashboard() {
-            const { turns, activeTurn, actionableTasks } = useContext(StudentContext);
-            const scrollRef = useRef(null);
 
-            useEffect(() => {
-                if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-            }, [turns, activeTurn]);
+        function ChatBubble({ turn, isPartial, onClick }) {
+            const isTutor = turn.speaker && (turn.speaker === 'Aaron' || turn.speaker === 'A');
+            const springConfig = { type: "spring", stiffness: 400, damping: 25 };
 
             return (
-                <main className="flex-grow flex overflow-hidden px-8 pb-8 gap-6">
-                    {/* LEFT: CHAT */}
-                    <section className="flex-1 glass-panel rounded-[2.5rem] flex flex-col relative overflow-hidden">
-                        <div className="flex-1 overflow-y-auto p-8 scrollbar-hide" ref={scrollRef}>
+                <motion.div 
+                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={springConfig}
+                    className={`flex w-full mb-8 relative group ${isTutor ? 'justify-end' : 'justify-start'}`}
+                >
+                    {/* MOLTEN GLASS UNDERLAY */}
+                    <div className={`absolute -inset-4 blur-2xl opacity-20 pointer-events-none rounded-full ${isTutor ? 'bg-red-500' : 'bg-blue-400'}`}></div>
+
+                    <div
+                        onClick={() => !isPartial && onClick(turn.text)}
+                        className={`
+                            relative max-w-[85%] px-7 py-5 rounded-[2rem] cursor-pointer transition-all duration-300 border border-white/5
+                            ${isTutor 
+                                ? 'bg-gradient-to-br from-[#bc2828] to-[#911818] text-white rounded-tr-sm shadow-[0_10px_30px_rgba(180,20,20,0.4)]'
+                                : 'glass-panel text-gray-100 rounded-tl-sm hover:bg-white/10'}
+                            ${isPartial ? 'opacity-80 scale-[1.02]' : 'opacity-100'}
+                        `}
+                    >
+                        <p className={`
+                            text-[16px] leading-relaxed tracking-wide
+                            ${isPartial
+                                ? 'font-light italic text-white/90 text-neo'
+                                : 'font-normal text-neo'}
+                        `}>
+                            {turn.text}
+                        </p>
+                    </div>
+                </motion.div>
+            );
+        }
+
+        function MarkCard({ task, index }) {
+            return (
+                <motion.div
+                    initial={{ opacity: 0, x: 50, filter: 'blur(10px)' }}
+                    animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                    transition={{ delay: index * 0.05, type: "spring" }}
+                    className="glass-panel p-4 mb-3 rounded-2xl border-l-4 border-l-orange-500 relative group hover:bg-white/5 transition-colors"
+                >
+                    <div className="flex justify-between items-start mb-2">
+                        <span className="text-[9px] font-bold text-orange-400 uppercase tracking-[0.2em] bg-orange-900/20 px-2 py-1 rounded">{task.category}</span>
+                    </div>
+                    <p className="text-sm text-white/90 leading-relaxed font-light mt-1">{task.text}</p>
+                </motion.div>
+            );
+        }
+
+        function Dashboard() {
+            const { turns, activeTurn, actionableTasks, addTask } = useContext(StudentContext);
+            const scrollRef = useRef(null);
+            const [autoScroll, setAutoScroll] = useState(true);
+
+            const handleScroll = () => {
+                if (scrollRef.current) {
+                    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+                    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+                    setAutoScroll(isNearBottom);
+                }
+            };
+
+            useEffect(() => {
+                if (autoScroll && scrollRef.current) {
+                    scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+                }
+            }, [turns, activeTurn, autoScroll]);
+
+            const handleBubbleClick = (text) => {
+                navigator.clipboard.writeText(text);
+                addTask(text);
+            };
+
+            return (
+                <main className="flex-grow flex overflow-hidden px-8 pb-8 gap-8">
+                    {/* LEFT: CHAT (70%) */}
+                    <section className="flex-[3] glass-panel-heavy rounded-[2.5rem] flex flex-col relative overflow-hidden">
+                        <div
+                            className="flex-1 overflow-y-auto p-8 scrollbar-hide"
+                            ref={scrollRef}
+                            onScroll={handleScroll}
+                        >
                             {turns.length === 0 && !activeTurn && (
-                                <div className="h-full flex flex-col items-center justify-center text-white/20">
-                                    <span className="material-symbols-rounded text-6xl mb-4">graphic_eq</span>
-                                    <p className="text-sm font-light tracking-widest uppercase">Waiting for audio stream...</p>
+                                <div className="h-full flex flex-col items-center justify-center opacity-40">
+                                    <div className="w-24 h-24 rounded-full border border-dashed border-white/20 flex items-center justify-center animate-spin-slow">
+                                        <span className="material-symbols-rounded text-5xl text-white">graphic_eq</span>
+                                    </div>
                                 </div>
                             )}
-                            {turns.map((t) => <ChatBubble key={t.id} turn={t} />)}
+                            <AnimatePresence>
+                                {turns.map((t) => (
+                                    <ChatBubble key={t.id} turn={t} onClick={handleBubbleClick} />
+                                ))}
+                            </AnimatePresence>
                             {activeTurn && <ChatBubble turn={activeTurn} isPartial={true} />}
-                        </div>
-
-                        {isLoading ? (
-                            <div className="py-8 flex flex-col items-center justify-center space-y-3">
-                                <div className="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                                <p className="text-sm text-gray-500">Analyzing context...</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wider ml-1">Original Text</label>
-                                    <div className="mt-1 p-3 bg-black/30 rounded-xl text-gray-300 text-sm italic border border-white/5">
-                                        "{formData.detectedTrigger}"
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider ml-1">Category</label>
-                                        <select 
-                                            className="mt-1 w-full bg-[#2C2C2E] text-white text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-red-500 border border-white/5"
-                                            value={formData.category}
-                                            onChange={e => setFormData({...formData, category: e.target.value})}
-                                        >
-                                            <option value="VOCAB_GAP">Vocabulary</option>
-                                            <option value="GRAMMAR_ERR">Grammar</option>
-                                            <option value="PRONUNCIATION">Pronunciation</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider ml-1">Correction</label>
-                                        <input 
-                                            className="mt-1 w-full bg-[#2C2C2E] text-white text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-red-500 border border-white/5"
-                                            value={formData.suggestedCorrection}
-                                            onChange={e => setFormData({...formData, suggestedCorrection: e.target.value})}
-                                            placeholder="Correction..."
-                                        />
-                                    </div>
-                        {/* INPUT BAR */}
-                        <div className="p-6">
-                            <div className="glass-bubble rounded-full px-6 py-4 flex items-center space-x-4">
-                                <span className="material-symbols-rounded text-white/50 animate-pulse">mic</span>
-                                <div className="h-1 flex-1 bg-white/10 rounded-full overflow-hidden">
-                                    <div className="h-full w-1/3 bg-white/30 rounded-full animate-progress"></div>
-                                </div>
-                                <span className="text-xs text-white/40 font-mono">LISTENING</span>
-                            </div>
                         </div>
                     </section>
 
-                    {/* RIGHT: ACTIONABLE TASKS */}
-                    <aside className="w-[400px] flex flex-col">
-                        <div className="glass-panel rounded-[2.5rem] flex-1 flex flex-col overflow-hidden p-6">
-                            <div className="flex items-center justify-between mb-6 px-2">
-                                <h2 className="text-sm font-bold text-white tracking-widest uppercase text-shadow-glow">Analysis</h2>
-                                <span className="bg-white/10 px-2 py-0.5 rounded-full text-[10px] font-bold text-white/60 border border-white/10">{actionableTasks.length}</span>
+                    {/* RIGHT: MARKS & NOTES (30%) */}
+                    <aside className="flex-1 flex flex-col gap-4">
+                        {/* MARKED ITEMS LIST */}
+                        <div className="flex-1 glass-panel rounded-[2.5rem] flex flex-col overflow-hidden bg-black/20">
+                            <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                                <h2 className="text-xs font-bold text-white/60 tracking-[0.25em] uppercase flex items-center gap-2">
+                                    <span className="material-symbols-rounded text-sm text-orange-500">bookmark</span>
+                                    Marked
+                                </h2>
+                                <span className="text-[10px] font-mono text-white/20">{actionableTasks.length} ITEMS</span>
                             </div>
 
-                                <div className="pt-4 flex justify-end space-x-3">
-                                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">Cancel</button>
-                                    <button onClick={() => onSave(formData)} className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-full shadow-lg shadow-red-600/20 transition-all transform active:scale-95">
-                                        Save Card
-                                    </button>
-                                </div>
-                            <div className="flex-1 overflow-y-auto scrollbar-hide -mx-2 px-2">
+                            <div className="flex-1 overflow-y-auto p-4 scrollbar-hide space-y-2">
                                 <AnimatePresence>
                                     {actionableTasks.map((task, i) => (
-                                        <TaskCard key={i} task={task} />
+                                        <MarkCard key={task.id || i} task={task} index={i} />
                                     ))}
                                 </AnimatePresence>
-                                {actionableTasks.length === 0 && (
-                                    <div className="mt-10 text-center opacity-30">
-                                        <div className="w-16 h-16 border border-white/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <span className="material-symbols-rounded text-2xl">auto_awesome</span>
-                                        </div>
-                                        <p className="text-xs font-light">AI insights will appear here</p>
-                                    </div>
-                                )}
                             </div>
                         </div>
+
+                        {/* LIQUID NOTES WIDGET */}
+                        <LiquidNotes />
                     </aside>
                 </main>
             );
