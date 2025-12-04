@@ -1374,6 +1374,15 @@ class MonoMicrophoneStream:
 
         device_info = self.p.get_device_info_by_index(device_index)
         self.input_channels = int(device_info["maxInputChannels"])
+        
+        # CRITICAL FIX: Only set default channel indices if device actually has input channels
+        if self.input_channels == 0:
+            logger.error(f"❌ Device {device_index} ({device_info['name']}) has NO input channels!")
+            logger.error(f"💡 Run 'python check_audio.py' to find the correct device")
+            raise ValueError(
+                f"Device {device_index} ({device_info['name']}) has no input channels"
+            )
+        
         self.channel_indices = (
             channel_indices if channel_indices else list(range(self.input_channels))
         )
@@ -1382,13 +1391,6 @@ class MonoMicrophoneStream:
         logger.info(f"📊 Input channels: {self.input_channels}")
         if self.channel_indices:
             logger.info(f"🎧 Listening to channels: {self.channel_indices}")
-
-        if self.input_channels == 0:
-            logger.error(f"❌ Device {device_index} has no input channels!")
-            logger.error(f"💡 Run 'python check_audio.py' to find the correct device")
-            raise ValueError(
-                f"Device {device_index} ({device_info['name']}) has no input channels"
-            )
 
         if max(self.channel_indices) >= self.input_channels:
             logger.error(
