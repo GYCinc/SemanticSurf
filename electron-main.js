@@ -35,12 +35,17 @@ function createWindow() {
       responseHeaders: {
         ...details.responseHeaders,
         "Content-Security-Policy": [
-          "default-src 'self' https://unpkg.com; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws://localhost:8765",
+          "default-src 'self' https://unpkg.com; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' ws://localhost:8765 https:",
         ],
       },
     });
   });
   // --- END FIX ---
+
+  // --- CACHE CLEAR (Force Fresh Load) ---
+  session.defaultSession.clearCache().then(() => {
+    console.log("CLEARED ELECTRON CACHE");
+  });
 
   // --- FIX: Load the correct file ---
   mainWindow.loadFile("viewer2.html");
