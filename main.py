@@ -1462,8 +1462,8 @@ def run_streaming_client():
             sample_rate=16000,
             audio_encoding="pcm_s16le",
             # Raw text configuration
-            punctuate=True, # Enable punctuation for readability
-            format_text=True, # Enable formatting (casing, numbers)
+            punctuate=False, # DISABLED for ESL accuracy
+            format_text=False, # DISABLED for ESL accuracy
             # speaker_labels=True, # REMOVED: Ignored in v3 streaming
             # OPTIMIZATION: We now use post-session batch diarization for accurate speaker labeling
             # This improves diarization accuracy significantly for 1-on-1 sessions.
