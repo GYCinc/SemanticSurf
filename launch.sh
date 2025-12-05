@@ -31,8 +31,8 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
-# Ensure .env variables are loaded
-export $(cat .env | xargs)
+# Ensure .env variables are loaded (ignoring comments)
+export $(grep -v '^#' .env | xargs)
 
 # Check/Install Node.js Dependencies
 if [ ! -d "node_modules" ]; then

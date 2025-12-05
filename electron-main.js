@@ -42,6 +42,11 @@ function createWindow() {
   });
   // --- END FIX ---
 
+  // --- CACHE CLEAR (Force Fresh Load) ---
+  session.defaultSession.clearCache().then(() => {
+    console.log("CLEARED ELECTRON CACHE");
+  });
+
   // --- FIX: Load the correct file ---
   mainWindow.loadFile("viewer2.html");
 
