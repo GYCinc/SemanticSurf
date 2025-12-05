@@ -2,6 +2,104 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>Semantic Surfer - Crimson Glass</title>
+    <!-- Tailwind CSS (via CDN for runtime speed) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM (via CDN) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel for in-browser JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Framer Motion -->
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Inter', sans-serif;
+            color: #e5e5e5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Glass Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-input {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .glass-input:focus {
+            outline: none;
+            border-color: rgba(220, 38, 38, 0.5); /* Red-600 */
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        /* Animation utilities */
+        .fade-enter { opacity: 0; transform: translateY(10px); }
+        .fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms, transform 300ms; }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top-color: #ef4444; /* Red-500 */
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #root {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Selection Highlight */
+        ::selection {
+            background: rgba(239, 68, 68, 0.3);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Fallback Loading Overlay (Removed by React on Mount) -->
+    <div id="initial-loader" style="position:fixed; inset:0; background:#000; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white;">
+        <div class="spinner"></div>
+        <p style="margin-top:20px; font-family:'Inter',sans-serif; opacity:0.7;">Initializing Crimson Glass...</p>
+    </div>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Semantic Surfer - Crimson Glass</title>
     
@@ -408,7 +506,7 @@
     <div class="crimson-orb bg-orange-600/10 w-[500px] h-[500px] bottom-0 right-0 mix-blend-screen" style="animation-delay: -5s"></div>
     <div class="crimson-orb bg-red-900/30 w-[600px] h-[600px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mix-blend-overlay" style="animation-delay: -10s"></div>
 
-    <div id="root" class="flex flex-col h-screen relative z-10"></div>
+    <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, createContext, useContext, useMemo } = React;
@@ -872,318 +970,255 @@
                             {turn.text}
                         </p>
                     </div>
-                </motion.div>
-            );
-        }
 
-        function MarkCard({ task, index }) {
-            return (
-                <motion.div
-                    initial={{ opacity: 0, x: 50, filter: 'blur(10px)' }}
-                    animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-                    transition={{ delay: index * 0.05, type: "spring" }}
-                    className="glass-panel p-4 mb-3 rounded-2xl border-l-4 border-l-orange-500 relative group hover:bg-white/5 transition-colors"
-                >
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-[9px] font-bold text-orange-400 uppercase tracking-[0.2em] bg-orange-900/20 px-2 py-1 rounded">{task.category}</span>
+                    {/* Interactive Line Container */}
+                    <div
+                        className="pl-4 border-l-2 border-white/10 group-hover:border-red-500/50 transition-colors duration-300 cursor-pointer hover:bg-white/5 rounded-r-lg p-2 -ml-2"
+                        onClick={() => onLineClick(turn)}
+                        title="Click to copy full line"
+                    >
+                        <p className="text-lg leading-relaxed text-white/90">
+                            {turn.words && turn.words.length > 0 ? (
+                                turn.words.map((w, i) => (
+                                    <TranscriptWord key={i} word={w} onClick={() => onWordClick(w, turn)} />
+                                ))
+                            ) : (
+                                <span>{turn.text}</span>
+                            )}
+                        </p>
                     </div>
-                    <p className="text-sm text-white/90 leading-relaxed font-light mt-1">{task.text}</p>
                 </motion.div>
             );
-        }
+        };
 
-        function Dashboard() {
-            const { turns, activeTurn, actionableTasks, addTask } = useContext(StudentContext);
-            const scrollRef = useRef(null);
-            const [autoScroll, setAutoScroll] = useState(true);
+        // --- MAIN APP ---
+        const App = () => {
+            const [status, setStatus] = useState("Connecting...");
+            const [ws, setWs] = useState(null);
+            const [session, setSession] = useState({ turns: [], notes: "", student_name: "Unknown", wpm: 0 });
+            const [students, setStudents] = useState([]);
+            const [markedNotes, setMarkedNotes] = useState([]);
 
-            const handleScroll = () => {
-                if (scrollRef.current) {
-                    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-                    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-                    setAutoScroll(isNearBottom);
-                }
-            };
+            // Ref for auto-scrolling
+            const transcriptEndRef = useRef(null);
 
-            // Auto-scroll transcript
+            // Remove initial loader on mount
             useEffect(() => {
-                if (scrollRef.current) {
-                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                }
-            }, [transcripts, currentTranscript]);
+                const loader = document.getElementById('initial-loader');
+                if (loader) loader.style.display = 'none';
+            }, []);
 
-            // Auto-scroll marked items
+            // Scroll to bottom when turns change
             useEffect(() => {
-                if (markedScrollRef.current) {
-                    markedScrollRef.current.scrollTop = markedScrollRef.current.scrollHeight;
-                }
-            }, [markedItems]);
+                transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [session.turns]);
 
             // WebSocket Connection
             useEffect(() => {
-                const loader = document.getElementById('loading-overlay');
+                const socket = new WebSocket("ws://localhost:8765");
 
-                const connect = () => {
-                    const ws = new WebSocket('ws://localhost:8765');
-                    wsRef.current = ws;
-
-                    ws.onopen = () => {
-                        setStatus('connected');
-                        console.log('WS Connected');
-                        if(loader) loader.style.opacity = '0';
-                        setTimeout(() => loader?.remove(), 500);
-                    };
-
-                    ws.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data);
-                            console.log("WS Message:", data.message_type);
-
-                            if (data.message_type === 'student_list') {
-                                setStudents(data.students || []);
-                            }
-                            else if (data.message_type === 'session_start') {
-                                setStatus('listening');
-                                setTranscripts([]);
-                                setMarkedItems([]);
-                                setCurrentTranscript("");
-                            }
-                            else if (data.message_type === 'partial') {
-                                setCurrentTranscript(data.text);
-                                setStatus('listening');
-                            }
-                            else if (data.message_type === 'transcript') {
-                                setTranscripts(prev => [...prev, data]);
-                                setCurrentTranscript("");
-                            }
-                            else if (data.message_type === 'session_end') {
-                                setStatus('connected');
-                                setCurrentTranscript("");
-                            }
-                        } catch (e) {
-                            console.error("Error parsing WS message", e);
-                        }
-                    };
-
-                    ws.onclose = () => {
-                        setStatus('disconnected');
-                        setTimeout(connect, 3000);
-                    };
+                socket.onopen = () => {
+                    setStatus("Online");
+                    setWs(socket);
                 };
 
-                connect();
-                return () => wsRef.current?.close();
+                socket.onclose = () => setStatus("Disconnected");
+
+                socket.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        handleMessage(msg);
+                    } catch (e) {
+                        console.error("Parse error:", e);
+                    }
+                };
+
+                return () => socket.close();
             }, []);
 
+            const handleMessage = (msg) => {
+                if (msg.message_type === "student_list") {
+                    setStudents(msg.students.map(s => ({ value: s, label: s })));
+                } else if (msg.message_type === "transcript") {
+                    setSession(prev => ({
+                        ...prev,
+                        turns: [...prev.turns, { ...msg, words: msg.words || [] }], // Ensure words array exists
+                        wpm: msg.speaking_rate_wpm || prev.wpm
+                    }));
+                } else if (msg.message_type === "partial") {
+                    // Optional: Handle partials if you want real-time text updating before final
+                }
+            };
+
+            const handleWordClick = (word, turn) => {
+                // Copy to clipboard
+                navigator.clipboard.writeText(word.text).catch(err => console.error("Clipboard copy failed:", err));
+
+                // Add to marked notes
+                const note = {
+                    id: Date.now(),
+                    text: word.text,
+                    context: turn.text,
+                    timestamp: new Date().toLocaleTimeString(),
+                    type: 'vocabulary' // Default type
+                };
+                setMarkedNotes(prev => [note, ...prev]);
+
+                // Send to backend
+                if (ws) {
+                    ws.send(JSON.stringify({
+                        message_type: "mark_update",
+                        turn_order: turn.turn_order,
+                        mark_type: "vocabulary", // Can be customized
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+            };
+
+            const handleLineClick = (turn) => {
+                const fullText = turn.words ? turn.words.map(w => w.text).join(' ') : turn.text;
+
+                // Copy to clipboard
+                navigator.clipboard.writeText(fullText).catch(err => console.error("Clipboard copy failed:", err));
+
+                // Add to marked notes as "Expression" or "Sentence"
+                const note = {
+                    id: Date.now(),
+                    text: fullText,
+                    context: "Full Line",
+                    timestamp: new Date().toLocaleTimeString(),
+                    type: 'expression'
+                };
+                setMarkedNotes(prev => [note, ...prev]);
+
+                if (ws) {
+                    ws.send(JSON.stringify({
+                        message_type: "mark_update",
+                        turn_order: turn.turn_order,
+                        mark_type: "expression",
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+            };
+
             const handleStudentChange = (name) => {
-                setSelectedStudent(name);
-                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify({
-                        message_type: 'start_session',
+                setSession(prev => ({ ...prev, student_name: name }));
+                if (ws) {
+                    ws.send(JSON.stringify({
+                        message_type: "start_session",
                         student_name: name
                     }));
                 }
             };
 
-            const handleMark = (text) => {
-                // Add to local state immediately
-                const newItem = {
-                    text: text,
-                    timestamp: new Date().toISOString(),
-                    context: currentTranscript || (transcripts.length > 0 ? transcripts[transcripts.length - 1].text : "")
-                };
-                setMarkedItems(prev => [...prev, newItem]);
-
-                // Send to backend
-                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify({
-                        message_type: 'update_notes', // Leveraging existing note saving or create new type
-                        note: text,
-                        context: newItem.context,
-                        timestamp: newItem.timestamp
-                    }));
-
-                    // Also send a mark update for the session log
-                    wsRef.current.send(JSON.stringify({
-                        message_type: 'mark_update',
-                        mark_type: 'vocabulary', // Defaulting to vocabulary for now
-                        text: text,
-                        timestamp: newItem.timestamp
-                    }));
-                }
-            };
-
             return (
-                <div className="h-screen w-screen p-6 flex flex-col gap-6 select-none">
-                    {/* Header */}
-                    <div className="flex justify-between items-center glass-panel rounded-2xl p-4 relative z-10">
-                        <div className="flex items-center gap-4">
-                            <div className="flex flex-col">
-                                <h1 className="text-xl font-bold tracking-wide uppercase text-white bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
-                                    Semantic Surfer
-                                </h1>
-                                <span className="text-[10px] text-crimson-400 font-mono tracking-widest">CRIMSON GLASS v2.1</span>
+                <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-[#450a0a] via-[#991b1b] to-[#450a0a] text-white font-sans">
+
+                    {/* LEFT: Transcript Area */}
+                    <div className="flex-1 flex flex-col relative z-10">
+                        {/* Header (Higher Z-Index to overlap Sidebar if needed) */}
+                        <header className="relative z-30 h-16 flex items-center justify-between px-6 border-b border-white/10 backdrop-blur-md bg-black/20 select-none" style={{ WebkitAppRegion: "drag" }}>
+                            <div className="flex items-center space-x-4">
+                                <div className={`w-2 h-2 rounded-full ${status === 'Online' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`} />
+                                <h1 className="text-lg font-bold tracking-tight text-white/90">SEMANTIC SURFER</h1>
                             </div>
 
-                            <div className="h-8 w-px bg-white/10 mx-2"></div>
+                            <div className="flex items-center space-x-6" style={{ WebkitAppRegion: "no-drag" }}>
+                                {/* WPM Indicator */}
+                                <div className="flex flex-col items-end">
+                                    <span className="text-xs text-white/50 uppercase tracking-wider">Pace</span>
+                                    <span className="text-sm font-mono font-bold text-red-400">{session.wpm ? Math.round(session.wpm) : '--'} <span className="text-xs text-white/30">WPM</span></span>
+                                </div>
 
-                            <div className={`px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase border ${status === 'listening' ? 'bg-red-500/10 border-red-500/30 text-red-400 animate-pulse' : (status === 'connected' ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-gray-500/10 border-gray-500/30 text-gray-400')}`}>
-                                {status === 'listening' ? 'LIVE RECORDING' : status}
+                                {/* Student Selector */}
+                                <GlassDropdown
+                                    options={[{value: 'New Student', label: '+ New Student'}, ...students]}
+                                    value={session.student_name}
+                                    onChange={handleStudentChange}
+                                    placeholder="Select Student"
+                                />
+                                
+                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/60 hover:text-white" title="Settings">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </button>
+
+                                {/* End Session Button (New) */}
+                                <button
+                                    onClick={() => {
+                                        if (ws) ws.send(JSON.stringify({ message_type: "end_session" }));
+                                        alert("Session Ended and Saved.");
+                                    }}
+                                    className="px-4 py-1.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 rounded text-xs font-bold text-red-200 tracking-wider transition-colors"
+                                >
+                                    END SESSION
+                                </button>
                             </div>
-                        </div>
+                        </header>
 
-                        <div className="flex items-center gap-4">
-                            <CustomDropdown
-                                options={students}
-                                value={selectedStudent}
-                                onChange={handleStudentChange}
-                                placeholder="Select Student..."
-                            />
-
-                            <div className="flex gap-2">
-                                 <IconButton icon="download" onClick={() => {}} />
-                                 <IconButton icon="settings" onClick={() => {}} />
-                            </div>
+                        {/* Transcript Content */}
+                        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                            <AnimatePresence>
+                                {session.turns.map((turn, idx) => (
+                                    <TranscriptRow key={idx} turn={turn} onWordClick={handleWordClick} onLineClick={handleLineClick} />
+                                ))}
+                            </AnimatePresence>
+                            <div ref={transcriptEndRef} />
                         </div>
                     </div>
 
-                    {/* Main Content Grid */}
-                    <div className="grid grid-cols-12 gap-6 flex-1 min-h-0">
-
-                        {/* LEFT: Live Audio/Transcript (7 cols) */}
-                        <GlassCard className="col-span-8 flex flex-col relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-b from-crimson-900/10 to-transparent pointer-events-none" />
-
-                            {/* Visualizer */}
-                            <div className="flex-shrink-0 mb-4 border-b border-white/5 pb-4">
-                                <LiquidVisualizer isListening={status === 'listening'} intensity={currentTranscript.length > 0 ? 1 : 0} />
-                            </div>
-
-                            {/* Transcript Area */}
-                            <div className="flex-1 overflow-y-auto pr-2 relative" ref={scrollRef}>
-                                <div className="space-y-2">
-                                    {transcripts.length === 0 && !currentTranscript && (
-                                        <div className="h-full flex flex-col items-center justify-center text-white/20">
-                                            <Icon name="mic" size={32} className="mb-4 opacity-50" />
-                                            <p className="text-sm">Select a student to begin session</p>
-                                        </div>
-                                    )}
-
-                                    {transcripts.map((t, i) => (
-                                        <TranscriptItem key={i} speaker={t.speaker} text={t.text} onMark={handleMark} />
-                                    ))}
-
-                                    {currentTranscript && (
-                                        <TranscriptItem speaker="..." text={currentTranscript} onMark={handleMark} isPartial={true} />
-                                    )}
-                                </div>
-                            </div>
-                        </GlassCard>
-
-                        {/* RIGHT: Marked Notes (4 cols) */}
-                        <GlassCard className="col-span-4 flex flex-col bg-black/40 border-l border-white/10">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xs font-bold tracking-widest uppercase text-white/90 flex items-center gap-2">
-                                    <Icon name="pen-tool" size={14} className="text-crimson-400" />
-                                    Marked Notes
-                                </h2>
-                                <span className="text-[10px] font-bold bg-white/10 px-2 py-1 rounded-full text-white/60">
-                                    {markedItems.length}
-                                </span>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto pr-2" ref={markedScrollRef}>
-                                {markedItems.length === 0 ? (
-                                    <div className="flex-1 flex flex-col justify-center items-center text-white/30 gap-4 h-full">
-                                        <div className="p-4 bg-white/5 rounded-full border border-dashed border-white/10">
-                                            <Icon name="mouse-pointer-click" size={24} className="opacity-50" />
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-sm font-medium text-white/50">Click words to mark</p>
-                                            <p className="text-xs mt-1 opacity-50">Saved to notes instantly</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-2">
-                                        <AnimatePresence>
-                                            {markedItems.map((item, i) => (
-                                                <MarkedItem key={i} item={item} />
-                                            ))}
-                                        </AnimatePresence>
-                                    </div>
-                                )}
-                            </div>
-                        </GlassCard>
-                if (autoScroll && scrollRef.current) {
-                    scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-                }
-            }, [turns, activeTurn, autoScroll]);
-
-            const handleBubbleClick = (text) => {
-                navigator.clipboard.writeText(text);
-                addTask(text);
-            };
-
-            return (
-                <main className="flex-grow flex overflow-hidden px-8 pb-8 gap-8">
-                    {/* LEFT: CHAT (70%) */}
-                    <section className="flex-[3] glass-panel-heavy rounded-[2.5rem] flex flex-col relative overflow-hidden">
-                        <div
-                            className="flex-1 overflow-y-auto p-8 scrollbar-hide"
-                            ref={scrollRef}
-                            onScroll={handleScroll}
-                        >
-                            {turns.length === 0 && !activeTurn && (
-                                <div className="h-full flex flex-col items-center justify-center opacity-40">
-                                    <div className="w-24 h-24 rounded-full border border-dashed border-white/20 flex items-center justify-center animate-spin-slow">
-                                        <span className="material-symbols-rounded text-5xl text-white">graphic_eq</span>
-                                    </div>
-                                </div>
-                            )}
-                            <AnimatePresence>
-                                {turns.map((t) => (
-                                    <ChatBubble key={t.id} turn={t} onClick={handleBubbleClick} />
-                                ))}
-                            </AnimatePresence>
-                            {activeTurn && <ChatBubble turn={activeTurn} isPartial={true} />}
+                    {/* RIGHT: Marked Notes (Click-to-Mark) */}
+                    <div className="w-80 border-l border-white/20 bg-black/40 backdrop-blur-xl flex flex-col z-20 shadow-2xl">
+                        <div className="p-4 border-b border-white/10 bg-red-900/10">
+                            <h2 className="text-xs font-bold uppercase tracking-widest text-red-400">Marked Notes</h2>
                         </div>
-                    </section>
 
-                    {/* RIGHT: MARKS & NOTES (30%) */}
-                    <aside className="flex-1 flex flex-col gap-4">
-                        {/* MARKED ITEMS LIST */}
-                        <div className="flex-1 glass-panel rounded-[2.5rem] flex flex-col overflow-hidden bg-black/20">
-                            <div className="p-5 border-b border-white/5 flex items-center justify-between">
-                                <h2 className="text-xs font-bold text-white/60 tracking-[0.25em] uppercase flex items-center gap-2">
-                                    <span className="material-symbols-rounded text-sm text-orange-500">bookmark</span>
-                                    Marked
-                                </h2>
-                                <span className="text-[10px] font-mono text-white/20">{actionableTasks.length} ITEMS</span>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-4 scrollbar-hide space-y-2">
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {markedNotes.length === 0 && (
+                                <p className="text-white/30 text-sm text-center italic mt-10">Click words in the transcript to add them here.</p>
+                            )}
+                            <div className="flex flex-wrap gap-2 content-start">
                                 <AnimatePresence>
-                                    {actionableTasks.map((task, i) => (
-                                        <MarkCard key={task.id || i} task={task} index={i} />
+                                    {markedNotes.map((note) => (
+                                        <motion.div
+                                            key={note.id}
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.5 }}
+                                            layout
+                                            className="glass-panel px-3 py-1 rounded-full border border-red-500/30 bg-red-900/20 flex items-center gap-2 group cursor-default"
+                                        >
+                                            <span className="text-sm font-medium text-white">{note.text}</span>
+
+                                            {/* Delete Action */}
+                                            <button
+                                                onClick={() => setMarkedNotes(prev => prev.filter(n => n.id !== note.id))}
+                                                className="text-white/40 hover:text-red-400 transition-colors"
+                                            >
+                                                ×
+                                            </button>
+                                        </motion.div>
                                     ))}
                                 </AnimatePresence>
                             </div>
                         </div>
 
-                        {/* LIQUID NOTES WIDGET */}
-                        <LiquidNotes />
-                    </aside>
-                </main>
-            );
-        }
-
-        function App() {
-            return (
-                <StudentProvider>
-                    <div className="flex flex-col h-full relative z-10">
-                        <Header />
-                        <Dashboard />
+                        {/* Text Area for General Notes */}
+                        <div className="p-4 border-t border-white/10 bg-black/20">
+                            <textarea
+                                className="w-full h-32 bg-transparent text-sm text-white/80 placeholder-white/30 resize-none focus:outline-none"
+                                placeholder="General session notes..."
+                                value={session.notes}
+                                onChange={(e) => {
+                                    setSession(prev => ({...prev, notes: e.target.value}));
+                                    if (ws) ws.send(JSON.stringify({ message_type: "update_notes", notes: e.target.value }));
+                                }}
+                            />
+                        </div>
                     </div>
+
                 </div>
             );
         };
