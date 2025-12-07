@@ -2,6 +2,104 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>Semantic Surfer - Crimson Glass</title>
+    <!-- Tailwind CSS (via CDN for runtime speed) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM (via CDN) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel for in-browser JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Framer Motion -->
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Inter', sans-serif;
+            color: #e5e5e5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Glass Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-input {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .glass-input:focus {
+            outline: none;
+            border-color: rgba(220, 38, 38, 0.5); /* Red-600 */
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        /* Animation utilities */
+        .fade-enter { opacity: 0; transform: translateY(10px); }
+        .fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms, transform 300ms; }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top-color: #ef4444; /* Red-500 */
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #root {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Selection Highlight */
+        ::selection {
+            background: rgba(239, 68, 68, 0.3);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Fallback Loading Overlay (Removed by React on Mount) -->
+    <div id="initial-loader" style="position:fixed; inset:0; background:#000; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white;">
+        <div class="spinner"></div>
+        <p style="margin-top:20px; font-family:'Inter',sans-serif; opacity:0.7;">Initializing Crimson Glass...</p>
+    </div>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Semantic Surfer - Crimson Glass</title>
     
@@ -259,6 +357,451 @@
                         </div>
                     )}
                 </div>
+        /* --- CRIMSON GLASS THEME --- */
+        :root {
+            --glass-surface: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-highlight: rgba(255, 255, 255, 0.2);
+            --crimson-glow: rgba(255, 59, 48, 0.4);
+            --metal-shine: linear-gradient(135deg, #e0e0e0 0%, #9ca3af 50%, #4b5563 100%);
+        }
+
+        /* Animated Background (Restored Crimson) */
+        .crimson-bg {
+            background: radial-gradient(circle at 50% 50%, #1a0505, #000000);
+            position: relative;
+        }
+
+        .crimson-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.6;
+            animation: orbFloat 20s infinite ease-in-out;
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+
+        /* Electron Window Controls */
+        .app-drag-region { -webkit-app-region: drag; }
+        .app-no-drag { -webkit-app-region: no-drag; }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Neomorphic / Glass Utilities */
+        .glass-panel {
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            box-shadow:
+                0 4px 30px rgba(0, 0, 0, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-panel-heavy {
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow:
+                0 20px 50px rgba(0,0,0,0.8),
+                inset 0 1px 1px rgba(255,255,255,0.1);
+        }
+
+        /* Raised Neomorphic Text */
+        .text-neo {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            letter-spacing: 0.05em;
+        }
+
+        /* Liquid Metal Animation */
+        .liquid-blob {
+            background: radial-gradient(circle at 30% 30%, #ffffff, #9ca3af, #4b5563);
+            box-shadow:
+                inset -2px -2px 6px rgba(0,0,0,0.5),
+                inset 2px 2px 6px rgba(255,255,255,1),
+                0 0 15px rgba(255,255,255,0.2);
+            animation: morph 6s ease-in-out infinite;
+        }
+
+        @keyframes morph {
+            0% { border-radius: 60% 40% 30% 70%/60% 30% 70% 40%; }
+            50% { border-radius: 30% 60% 70% 40%/50% 60% 30% 60%; }
+            100% { border-radius: 60% 40% 30% 70%/60% 30% 70% 40%; }
+        }
+
+        /* Dropdown Styles */
+        .drop { position: relative; cursor: pointer; z-index: 50; }
+        .drop .label {
+            color: #e5e5e5;
+            padding: 8px 24px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow:
+                inset 1px 1px 1px rgba(255,255,255,0.1),
+                0 4px 10px rgba(0,0,0,0.3);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex; align-items: center; gap: 8px;
+            backdrop-filter: blur(10px);
+        }
+        .drop:hover .label {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+
+        .drop .options {
+            position: absolute; top: 110%; left: 0; width: 100%; min-width: 200px;
+            background: rgba(15, 15, 15, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 6px;
+            transform: scale(0.9) translateY(-10px);
+            opacity: 0; pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+        .drop.liquid .options {
+            transform: scale(1) translateY(0);
+            opacity: 1; pointer-events: all;
+        }
+        .option-item {
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: #a1a1aa;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .option-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+    </style>
+</head>
+<body class="crimson-bg text-white min-h-screen flex flex-col overflow-hidden selection:bg-red-500/50 selection:text-white">
+    <!-- Animated Orbs for "Moving Crimson" Effect -->
+    <div class="crimson-orb bg-red-600/20 w-96 h-96 top-0 left-1/4 mix-blend-screen" style="animation-delay: 0s"></div>
+    <div class="crimson-orb bg-orange-600/10 w-[500px] h-[500px] bottom-0 right-0 mix-blend-screen" style="animation-delay: -5s"></div>
+    <div class="crimson-orb bg-red-900/30 w-[600px] h-[600px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mix-blend-overlay" style="animation-delay: -10s"></div>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, createContext, useContext, useMemo } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- STATS UTILS ---
+        const calculateWPM = (turns) => {
+            if (turns.length < 2) return 0;
+            const now = Date.now();
+            const oneMinuteAgo = now - 60000;
+            // Filter turns from last minute (approximate by arrival time if we don't have timestamps,
+            // but let's assume valid data or just use simple text length / time for session)
+            // Simplified: Total words / Total minutes of session
+            const words = turns.reduce((acc, t) => acc + t.text.split(' ').length, 0);
+            const durationMin = (now - window.sessionStartTime) / 60000;
+            return durationMin > 0 ? Math.round(words / durationMin) : 0;
+        };
+
+        const calculateTalkTime = (turns) => {
+            // Mocking talk time based on word count ratio as proxy for time
+            const studentWords = turns.filter(t => t.speaker !== 'Aaron' && t.speaker !== 'A').reduce((acc, t) => acc + t.text.split(' ').length, 0);
+            const tutorWords = turns.filter(t => t.speaker === 'Aaron' || t.speaker === 'A').reduce((acc, t) => acc + t.text.split(' ').length, 0);
+            const total = studentWords + tutorWords;
+            if (total === 0) return { student: '0%', tutor: '0%' };
+            return {
+                student: Math.round((studentWords / total) * 100) + '%',
+                tutor: Math.round((tutorWords / total) * 100) + '%'
+            };
+        };
+
+        // --- CONTEXT ---
+        const StudentContext = createContext();
+
+        function StudentProvider({ children }) {
+            const [studentName, setStudentName] = useState("Unknown");
+            const [connectionStatus, setConnectionStatus] = useState("Disconnected");
+            const [turns, setTurns] = useState([]);
+            const [activeTurn, setActiveTurn] = useState(null);
+            const [actionableTasks, setActionableTasks] = useState([]);
+            const [studentsList, setStudentsList] = useState([]);
+            const [newTaskFlash, setNewTaskFlash] = useState(false);
+            const clientRef = useRef(null);
+
+            // Session Stats State
+            const [wpm, setWpm] = useState(0);
+            const [talkTime, setTalkTime] = useState({ student: '50%', tutor: '50%' });
+
+            useEffect(() => {
+                window.sessionStartTime = Date.now();
+                const handlers = {
+                    onStatusChange: setConnectionStatus,
+                    onPartial: (text) => setActiveTurn({ text, isPartial: true }),
+                    onTurn: (data) => {
+                        setActiveTurn(null);
+                        setTurns(prev => {
+                            const newTurns = [...prev, { ...data, id: 'turn-' + Date.now() + Math.random() }];
+                            // Update Stats
+                            setWpm(calculateWPM(newTurns));
+                            setTalkTime(calculateTalkTime(newTurns));
+                            return newTurns;
+                        });
+                    },
+                    onAnalysis: () => {}, // No backend analysis trigger for now
+                    onStudentList: setStudentsList,
+                    onHealth: (data) => console.log("Health:", data)
+                };
+
+                clientRef.current = new DashboardClient("ws://localhost:8765", handlers);
+                clientRef.current.connect(studentName);
+                setTimeout(() => clientRef.current.sendMessage("get_students"), 1000);
+
+                return () => { if(clientRef.current.socket) clientRef.current.socket.close(); };
+            }, [studentName]);
+
+            const addTask = (text, type="Marked") => {
+                const newTask = {
+                    id: Date.now(),
+                    text: text,
+                    category: type,
+                    notes: ""
+                };
+                setActionableTasks(prev => [newTask, ...prev]);
+
+                // Trigger Flash
+                setNewTaskFlash(true);
+                setTimeout(() => setNewTaskFlash(false), 2000);
+            };
+
+            const toggleAlwaysOnTop = () => {
+                if (window.electron && window.electron.toggleAlwaysOnTop) {
+                    window.electron.toggleAlwaysOnTop();
+                }
+            };
+
+            const value = {
+                studentName, setStudentName,
+                connectionStatus,
+                turns, activeTurn,
+                actionableTasks, addTask, newTaskFlash,
+                studentsList,
+                wpm, talkTime
+            };
+            return <StudentContext.Provider value={value}>{children}</StudentContext.Provider>;
+        }
+
+        // --- DASHBOARD CLIENT (Re-declared for scope) ---
+        class DashboardClient {
+            constructor(url, handlers) {
+                this.url = url;
+                this.handlers = handlers;
+                this.socket = null;
+                this.reconnectInterval = 3000;
+            }
+            connect(studentName) {
+                this.socket = new WebSocket(this.url);
+                this.socket.onopen = () => {
+                    this.handlers.onStatusChange("Connected");
+                    this.socket.send(JSON.stringify({ message_type: "start_session", student_name: studentName }));
+                };
+                this.socket.onclose = () => {
+                    this.handlers.onStatusChange("Disconnected");
+                    setTimeout(() => this.connect(studentName), this.reconnectInterval);
+                };
+                this.socket.onerror = () => this.handlers.onStatusChange("Error");
+                this.socket.onmessage = (event) => {
+                    try { this.handleMessage(JSON.parse(event.data)); } catch (e) { console.error("Parse Error:", e); }
+                };
+            }
+            handleMessage(data) {
+                switch(data.message_type) {
+                    case "partial": this.handlers.onPartial(data.text); break;
+                    case "transcript": this.handlers.onTurn(data); break;
+                    case "analysis_result": this.handlers.onAnalysis(data); break;
+                    case "student_list": this.handlers.onStudentList(data.students); break;
+                    case "system_health": this.handlers.onHealth(data.data); break;
+                }
+            }
+            sendMessage(type, payload = {}) {
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    this.socket.send(JSON.stringify({ message_type: type, ...payload }));
+                }
+            }
+        }
+
+        // --- COMPONENTS ---
+
+        function LiquidNotes() {
+            const { addTask } = useContext(StudentContext);
+            const [isExpanded, setIsExpanded] = useState(false);
+            const [noteText, setNoteText] = useState("");
+
+            const handleDone = () => {
+                if (noteText.trim()) {
+                    addTask(noteText, "Manual Note");
+                    setNoteText("");
+                }
+                setIsExpanded(false);
+            };
+
+            return (
+                <>
+                    {/* MINI STATE: Docked Widget */}
+                    {!isExpanded && (
+                        <motion.div
+                            layoutId="liquid-note"
+                            className="glass-panel rounded-xl p-3 flex flex-col gap-2 relative group overflow-hidden"
+                            style={{ minHeight: '80px' }}
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Quick Note</span>
+                                <button
+                                    onClick={() => setIsExpanded(true)}
+                                    className="text-white/40 hover:text-white transition-colors"
+                                >
+                                    <span className="material-symbols-rounded text-lg">open_in_full</span>
+                                </button>
+                            </div>
+                            <textarea
+                                className="bg-transparent border-none text-xs text-white resize-none outline-none placeholder-white/20 w-full"
+                                placeholder="Type a note..."
+                                value={noteText}
+                                onChange={(e) => setNoteText(e.target.value)}
+                                rows={2}
+                            />
+                        </motion.div>
+                    )}
+
+                    {/* MAXI STATE: Crimson Glass Overlay */}
+                    <AnimatePresence>
+                        {isExpanded && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/80 backdrop-blur-md">
+                                <motion.div
+                                    layoutId="liquid-note"
+                                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                    className="w-full max-w-5xl h-[70vh] glass-panel-heavy rounded-[3rem] p-10 flex flex-col shadow-[0_0_150px_rgba(220,20,20,0.15)] relative overflow-hidden border border-red-500/10"
+                                >
+                                    {/* Animated Crimson Glow Background */}
+                                    <div className="absolute -top-40 -right-40 w-96 h-96 bg-red-600/10 rounded-full blur-[100px] pointer-events-none animate-pulse"></div>
+                                    <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-orange-600/10 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+                                    <div className="flex justify-between items-center mb-10 z-10 relative">
+                                        <h2 className="text-3xl font-bold text-white tracking-tighter flex items-center gap-4 text-neo">
+                                            <span className="w-5 h-5 rounded-full bg-gradient-to-br from-red-500 to-orange-600 shadow-[0_0_20px_rgba(255,69,58,0.5)] animate-pulse"></span>
+                                            INSTRUCTOR NOTE
+                                        </h2>
+                                        <button
+                                            onClick={handleDone}
+                                            className="px-8 py-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-red-500/30 hover:shadow-[0_0_30px_rgba(220,20,20,0.2)] text-white rounded-full font-bold tracking-widest transition-all duration-300 active:scale-95"
+                                        >
+                                            DONE
+                                        </button>
+                                    </div>
+
+                                    <textarea
+                                        className="flex-1 bg-transparent border-none text-6xl font-bold text-white/90 resize-none outline-none placeholder-white/10 leading-tight drop-shadow-lg"
+                                        placeholder="Write for the student..."
+                                        value={noteText}
+                                        onChange={(e) => setNoteText(e.target.value)}
+                                        autoFocus
+                                    />
+
+                                    <div className="mt-8 flex justify-between items-end z-10">
+                                        <div className="h-1 flex-1 bg-gradient-to-r from-red-500/0 via-red-500/20 to-red-500/0"></div>
+                                        <div className="ml-6 text-right text-white/30 font-mono text-xs tracking-[0.3em] uppercase">
+                                            High Visibility Mode
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>
+                </>
+            );
+        }
+
+        function Header() {
+            const { connectionStatus, studentName, setStudentName, studentsList, wpm, talkTime, newTaskFlash } = useContext(StudentContext);
+            const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(true);
+
+            const toggleTop = () => {
+                setIsAlwaysOnTop(!isAlwaysOnTop);
+                if (window.electron && window.electron.toggleAlwaysOnTop) {
+                    window.electron.toggleAlwaysOnTop();
+                }
+            };
+
+            return (
+                <header className="app-drag-region px-8 py-5 flex items-center justify-between sticky top-0 z-40">
+                    <div className="flex items-center space-x-8">
+                        {/* LOGO & LIQUID BLOB */}
+                        <div className="flex items-center gap-4 group">
+                            <div className="w-10 h-10 liquid-blob flex items-center justify-center">
+                                <span className="material-symbols-rounded text-gray-800 text-lg opacity-80">graphic_eq</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <h1 className="text-lg font-bold tracking-[0.2em] text-neo text-white">SEMANTIC SURFER</h1>
+                                <span className="text-[9px] text-white/40 tracking-[0.4em] font-light pl-0.5">PROJECT SENTINEL</span>
+                            </div>
+                        </div>
+
+                        {/* STUDENT DROPDOWN */}
+                        <div className="app-no-drag">
+                            <LiquidDropdown
+                                options={studentsList}
+                                value={studentName}
+                                onChange={setStudentName}
+                            />
+                        </div>
+
+                        {/* STATS DISPLAY */}
+                        <div className="hidden md:flex items-center space-x-6 px-6 border-l border-white/10">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold">Pace</span>
+                                <span className="text-sm font-mono text-white/80">{wpm} <span className="text-[10px]">WPM</span></span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold">Talk Ratio</span>
+                                <div className="flex items-center gap-1 text-[10px] font-mono mt-0.5">
+                                    <span className="text-red-400">{talkTime.tutor}</span>
+                                    <span className="text-white/20">/</span>
+                                    <span className="text-blue-400">{talkTime.student}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT CONTROLS */}
+                    <div className="flex items-center gap-4 app-no-drag">
+                         {/* TASK INDICATOR */}
+                         <div className={`transition-all duration-500 ${newTaskFlash ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+                            <div className="bg-orange-500/20 border border-orange-500 text-orange-400 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider shadow-[0_0_15px_rgba(249,115,22,0.4)]">
+                                ITEM CAPTURED
+                            </div>
+                         </div>
+
+                         <div className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border backdrop-blur-md ${connectionStatus === 'Connected' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-red-900/30 text-red-400 border-red-500/30'}`}>
+                            {connectionStatus === 'Connected' ? 'LIVE' : 'OFFLINE'}
+                        </div>
+
+                        <button
+                            onClick={toggleTop}
+                            className={`glass-button w-9 h-9 rounded-full flex items-center justify-center transition-all border border-white/10 hover:bg-white/10 ${isAlwaysOnTop ? 'text-white shadow-[0_0_10px_rgba(255,255,255,0.3)]' : 'text-white/30'}`}
+                        >
+                            <span className="material-symbols-rounded text-base">vertical_align_top</span>
+                        </button>
+                    </div>
+                </header>
             );
         };
 
@@ -339,97 +882,146 @@
             const wsRef = useRef(null);
             const scrollRef = useRef(null);
             const markedScrollRef = useRef(null);
+        function ChatBubble({ turn, isPartial, onClick }) {
+            const isTutor = turn.speaker && (turn.speaker === 'Aaron' || turn.speaker === 'A');
+            const springConfig = { type: "spring", stiffness: 400, damping: 25 };
 
-            // Auto-scroll transcript
-            useEffect(() => {
-                if (scrollRef.current) {
-                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                }
-            }, [transcripts, currentTranscript]);
+            return (
+                <motion.div 
+                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={springConfig}
+                    className={`flex w-full mb-8 relative group ${isTutor ? 'justify-end' : 'justify-start'}`}
+                >
+                    {/* MOLTEN GLASS UNDERLAY */}
+                    <div className={`absolute -inset-4 blur-2xl opacity-20 pointer-events-none rounded-full ${isTutor ? 'bg-red-500' : 'bg-blue-400'}`}></div>
 
-            // Auto-scroll marked items
+                    <div
+                        onClick={() => !isPartial && onClick(turn.text)}
+                        className={`
+                            relative max-w-[85%] px-7 py-5 rounded-[2rem] cursor-pointer transition-all duration-300 border border-white/5
+                            ${isTutor 
+                                ? 'bg-gradient-to-br from-[#bc2828] to-[#911818] text-white rounded-tr-sm shadow-[0_10px_30px_rgba(180,20,20,0.4)]'
+                                : 'glass-panel text-gray-100 rounded-tl-sm hover:bg-white/10'}
+                            ${isPartial ? 'opacity-80 scale-[1.02]' : 'opacity-100'}
+                        `}
+                    >
+                        <p className={`
+                            text-[16px] leading-relaxed tracking-wide
+                            ${isPartial
+                                ? 'font-light italic text-white/90 text-neo'
+                                : 'font-normal text-neo'}
+                        `}>
+                            {turn.text}
+                        </p>
+                    </div>
+
+                    {/* Interactive Line Container */}
+                    <div
+                        className="pl-4 border-l-2 border-white/10 group-hover:border-red-500/50 transition-colors duration-300 cursor-pointer hover:bg-white/5 rounded-r-lg p-2 -ml-2"
+                        onClick={() => onLineClick(turn)}
+                        title="Click to copy full line"
+                    >
+                        <p className="text-lg leading-relaxed text-white/90">
+                            {turn.words && turn.words.length > 0 ? (
+                                turn.words.map((w, i) => (
+                                    <TranscriptWord key={i} word={w} onClick={() => onWordClick(w, turn)} />
+                                ))
+                            ) : (
+                                <span>{turn.text}</span>
+                            )}
+                        </p>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- MAIN APP ---
+        const App = () => {
+            const [status, setStatus] = useState("Connecting...");
+            const [ws, setWs] = useState(null);
+            const [session, setSession] = useState({ turns: [], notes: "", student_name: "Unknown", wpm: 0 });
+            const [students, setStudents] = useState([]);
+            const [markedNotes, setMarkedNotes] = useState([]);
+
+            // Ref for auto-scrolling
+            const transcriptEndRef = useRef(null);
+
+            // Remove initial loader on mount
             useEffect(() => {
-                if (markedScrollRef.current) {
-                    markedScrollRef.current.scrollTop = markedScrollRef.current.scrollHeight;
-                }
-            }, [markedItems]);
+                const loader = document.getElementById('initial-loader');
+                if (loader) loader.style.display = 'none';
+            }, []);
+
+            // Scroll to bottom when turns change
+            useEffect(() => {
+                transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [session.turns]);
 
             // WebSocket Connection
             useEffect(() => {
-                const loader = document.getElementById('loading-overlay');
-                
-                const connect = () => {
-                    const ws = new WebSocket('ws://localhost:8765');
-                    wsRef.current = ws;
+                const socket = new WebSocket("ws://localhost:8765");
 
-                    ws.onopen = () => {
-                        setStatus('connected');
-                        console.log('WS Connected');
-                        if(loader) loader.style.opacity = '0';
-                        setTimeout(() => loader?.remove(), 500);
-                    };
-                    
-                    ws.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data);
-                            console.log("WS Message:", data.message_type);
-
-                            if (data.message_type === 'student_list') {
-                                setStudents(data.students || []);
-                            }
-                            else if (data.message_type === 'session_start') {
-                                setStatus('listening');
-                                setTranscripts([]);
-                                setMarkedItems([]);
-                                setCurrentTranscript("");
-                            }
-                            else if (data.message_type === 'partial') {
-                                setCurrentTranscript(data.text);
-                                setStatus('listening');
-                            }
-                            else if (data.message_type === 'transcript') {
-                                setTranscripts(prev => [...prev, data]);
-                                setCurrentTranscript("");
-                            }
-                            else if (data.message_type === 'session_end') {
-                                setStatus('connected');
-                                setCurrentTranscript("");
-                            }
-                        } catch (e) {
-                            console.error("Error parsing WS message", e);
-                        }
-                    };
-
-                    ws.onclose = () => {
-                        setStatus('disconnected');
-                        setTimeout(connect, 3000);
-                    };
+                socket.onopen = () => {
+                    setStatus("Online");
+                    setWs(socket);
                 };
 
-                connect();
-                return () => wsRef.current?.close();
+                socket.onclose = () => setStatus("Disconnected");
+
+                socket.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        handleMessage(msg);
+                    } catch (e) {
+                        console.error("Parse error:", e);
+                    }
+                };
+
+                return () => socket.close();
             }, []);
 
-            const handleStudentChange = (name) => {
-                setSelectedStudent(name);
-                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify({
-                        message_type: 'start_session',
-                        student_name: name
+            const handleMessage = (msg) => {
+                if (msg.message_type === "student_list") {
+                    setStudents(msg.students.map(s => ({ value: s, label: s })));
+                } else if (msg.message_type === "transcript") {
+                    setSession(prev => ({
+                        ...prev,
+                        turns: [...prev.turns, { ...msg, words: msg.words || [] }], // Ensure words array exists
+                        wpm: msg.speaking_rate_wpm || prev.wpm
+                    }));
+                } else if (msg.message_type === "partial") {
+                    // Optional: Handle partials if you want real-time text updating before final
+                }
+            };
+
+            const handleWordClick = (word, turn) => {
+                // Copy to clipboard
+                navigator.clipboard.writeText(word.text).catch(err => console.error("Clipboard copy failed:", err));
+
+                // Add to marked notes
+                const note = {
+                    id: Date.now(),
+                    text: word.text,
+                    context: turn.text,
+                    timestamp: new Date().toLocaleTimeString(),
+                    type: 'vocabulary' // Default type
+                };
+                setMarkedNotes(prev => [note, ...prev]);
+
+                // Send to backend
+                if (ws) {
+                    ws.send(JSON.stringify({
+                        message_type: "mark_update",
+                        turn_order: turn.turn_order,
+                        mark_type: "vocabulary", // Can be customized
+                        timestamp: new Date().toISOString()
                     }));
                 }
             };
 
-            const handleMark = (text) => {
-                // Add to local state immediately
-                const newItem = {
-                    text: text,
-                    timestamp: new Date().toISOString(),
-                    context: currentTranscript || (transcripts.length > 0 ? transcripts[transcripts.length - 1].text : "")
-                };
-                setMarkedItems(prev => [...prev, newItem]);
-
-                // Send to backend
+            const handleLineClick = (turn) => {
+                const fullText = turn.words ? turn.words.map(w => w.text).join(' ') : turn.text;
                 if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
                     wsRef.current.send(JSON.stringify({
                         message_type: 'update_notes', // Leveraging existing note saving or create new type
@@ -475,13 +1067,56 @@
                                 placeholder="Select Student..."
                             />
 
-                            <div className="flex gap-2">
-                                 <IconButton icon="download" onClick={() => {}} />
-                                 <IconButton icon="settings" onClick={() => {}} />
-                            </div>
-                        </div>
-                    </div>
+                // Copy to clipboard
+                navigator.clipboard.writeText(fullText).catch(err => console.error("Clipboard copy failed:", err));
 
+                // Add to marked notes as "Expression" or "Sentence"
+                const note = {
+                    id: Date.now(),
+                    text: fullText,
+                    context: "Full Line",
+                    timestamp: new Date().toLocaleTimeString(),
+                    type: 'expression'
+                };
+                setMarkedNotes(prev => [note, ...prev]);
+
+                if (ws) {
+                    ws.send(JSON.stringify({
+                        message_type: "mark_update",
+                        turn_order: turn.turn_order,
+                        mark_type: "expression",
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+            };
+
+            const handleStudentChange = (name) => {
+                setSession(prev => ({ ...prev, student_name: name }));
+                if (ws) {
+                    ws.send(JSON.stringify({
+                        message_type: "start_session",
+                        student_name: name
+                    }));
+                }
+            };
+
+            return (
+                <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-[#450a0a] via-[#991b1b] to-[#450a0a] text-white font-sans">
+
+                    {/* LEFT: Transcript Area */}
+                    <div className="flex-1 flex flex-col relative z-10">
+                        {/* Header (Higher Z-Index to overlap Sidebar if needed) */}
+                        <header className="relative z-30 h-16 flex items-center justify-between px-6 border-b border-white/10 backdrop-blur-md bg-black/20 select-none" style={{ WebkitAppRegion: "drag" }}>
+                            <div className="flex items-center space-x-4">
+                                <div className={`w-2 h-2 rounded-full ${status === 'Online' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`} />
+                                <h1 className="text-lg font-bold tracking-tight text-white/90">SEMANTIC SURFER</h1>
+                            </div>
+
+                            <div className="flex items-center space-x-6" style={{ WebkitAppRegion: "no-drag" }}>
+                                {/* WPM Indicator */}
+                                <div className="flex flex-col items-end">
+                                    <span className="text-xs text-white/50 uppercase tracking-wider">Pace</span>
+                                    <span className="text-sm font-mono font-bold text-red-400">{session.wpm ? Math.round(session.wpm) : '--'} <span className="text-xs text-white/30">WPM</span></span>
                     {/* Main Content Grid */}
                     <div className="grid grid-cols-12 gap-6 flex-1 min-h-0">
                         
@@ -512,21 +1147,94 @@
                                         <TranscriptItem speaker="..." text={currentTranscript} onMark={handleMark} isPartial={true} />
                                     )}
                                 </div>
-                            </div>
-                        </GlassCard>
 
-                        {/* RIGHT: Marked Notes (4 cols) */}
-                        <GlassCard className="col-span-4 flex flex-col bg-black/40 border-l border-white/10">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xs font-bold tracking-widest uppercase text-white/90 flex items-center gap-2">
-                                    <Icon name="pen-tool" size={14} className="text-crimson-400" />
-                                    Marked Notes
-                                </h2>
-                                <span className="text-[10px] font-bold bg-white/10 px-2 py-1 rounded-full text-white/60">
-                                    {markedItems.length}
-                                </span>
-                            </div>
+                                {/* Student Selector */}
+                                <GlassDropdown
+                                    options={[{value: 'New Student', label: '+ New Student'}, ...students]}
+                                    value={session.student_name}
+                                    onChange={handleStudentChange}
+                                    placeholder="Select Student"
+                                />
+                                
+                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/60 hover:text-white" title="Settings">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </button>
 
+                                {/* End Session Button (New) */}
+                                <button
+                                    onClick={() => {
+                                        if (ws) ws.send(JSON.stringify({ message_type: "end_session" }));
+                                        alert("Session Ended and Saved.");
+                                    }}
+                                    className="px-4 py-1.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 rounded text-xs font-bold text-red-200 tracking-wider transition-colors"
+                                >
+                                    END SESSION
+                                </button>
+                            </div>
+                        </header>
+
+                        {/* Transcript Content */}
+                        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                            <AnimatePresence>
+                                {session.turns.map((turn, idx) => (
+                                    <TranscriptRow key={idx} turn={turn} onWordClick={handleWordClick} onLineClick={handleLineClick} />
+                                ))}
+                            </AnimatePresence>
+                            <div ref={transcriptEndRef} />
+                        </div>
+                    </div>
+
+                    {/* RIGHT: Marked Notes (Click-to-Mark) */}
+                    <div className="w-80 border-l border-white/20 bg-black/40 backdrop-blur-xl flex flex-col z-20 shadow-2xl">
+                        <div className="p-4 border-b border-white/10 bg-red-900/10">
+                            <h2 className="text-xs font-bold uppercase tracking-widest text-red-400">Marked Notes</h2>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {markedNotes.length === 0 && (
+                                <p className="text-white/30 text-sm text-center italic mt-10">Click words in the transcript to add them here.</p>
+                            )}
+                            <div className="flex flex-wrap gap-2 content-start">
+                                <AnimatePresence>
+                                    {markedNotes.map((note) => (
+                                        <motion.div
+                                            key={note.id}
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.5 }}
+                                            layout
+                                            className="glass-panel px-3 py-1 rounded-full border border-red-500/30 bg-red-900/20 flex items-center gap-2 group cursor-default"
+                                        >
+                                            <span className="text-sm font-medium text-white">{note.text}</span>
+
+                                            {/* Delete Action */}
+                                            <button
+                                                onClick={() => setMarkedNotes(prev => prev.filter(n => n.id !== note.id))}
+                                                className="text-white/40 hover:text-red-400 transition-colors"
+                                            >
+                                                ×
+                                            </button>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        </div>
+
+                        {/* Text Area for General Notes */}
+                        <div className="p-4 border-t border-white/10 bg-black/20">
+                            <textarea
+                                className="w-full h-32 bg-transparent text-sm text-white/80 placeholder-white/30 resize-none focus:outline-none"
+                                placeholder="General session notes..."
+                                value={session.notes}
+                                onChange={(e) => {
+                                    setSession(prev => ({...prev, notes: e.target.value}));
+                                    if (ws) ws.send(JSON.stringify({ message_type: "update_notes", notes: e.target.value }));
+                                }}
+                            />
+                        </div>
                             <div className="flex-1 overflow-y-auto pr-2" ref={markedScrollRef}>
                                 {markedItems.length === 0 ? (
                                     <div className="flex-1 flex flex-col justify-center items-center text-white/30 gap-4 h-full">
@@ -550,6 +1258,7 @@
                             </div>
                         </GlassCard>
                     </div>
+
                 </div>
             );
         };
