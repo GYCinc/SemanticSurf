@@ -877,11 +877,11 @@ async def perform_batch_diarization(audio_path, session_path):
     try:
         transcriber = Transcriber()
         config = TranscriptionConfig(
-            speaker_labels=True,
-            speakers_expected=2, # Tutor + Student
-            punctuate=True,
-            format_text=True,
-            speech_model=aai.SpeechModel.best # Use highest accuracy model (e.g. SLAM-1)
+            speaker_labels=True,  # KEEP TRUE - needed to separate tutor from student
+            speakers_expected=2,
+            punctuate=False,
+            format_text=False,
+            speech_model='slam-1'
         )
         
         transcript = await transcriber.transcribe_async(audio_path, config)
@@ -960,9 +960,10 @@ async def upload_analysis_to_supabase(session_path, duration_seconds, audio_path
     try:
         # 0. Run Batch Diarization if audio exists
         if audio_path:
-            success = await perform_batch_diarization(audio_path, session_path)
-            if not success:
-                logger.warning("⚠️ Proceeding with upload without diarization")
+            # SKIPPING BATCH for immediate availability as requested
+            # success = await perform_batch_diarization(audio_path, session_path)
+            # if not success:
+            logger.info("⚠️ Skipping Batch Diarization (Fast Mode Enabled)")
 
         # --- DUPLICATE PREVENTION START ---
         logger.info("🛡️ Checking for existing session to prevent duplicates...")
