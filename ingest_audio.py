@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 import assemblyai as aai
+import httpx  # Added for GitEnglishHub API
 from supabase import create_client, Client
 
 # --- Setup Logging ---
@@ -23,6 +24,10 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 AAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 
+# GitEnglishHub Integration (The proper pipeline!)
+GITENGLISH_API_BASE = os.getenv("GITENGLISH_API_BASE", "https://www.gitenglish.com")
+MCP_SECRET = os.getenv("MCP_SECRET")
+
 if not AAI_API_KEY:
     logger.error("❌ ASSEMBLYAI_API_KEY not found in environment.")
     sys.exit(1)
@@ -33,18 +38,62 @@ supabase: Client = None
 if SUPABASE_URL and SUPABASE_KEY:
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        logger.info("✅ Supabase client initialized")
+        logger.info("✅ Supabase client initialized (for student lookup only)")
     except Exception as e:
-        logger.error(f"❌ Failed to initialize Supabase: {e}")
-        sys.exit(1)
+        logger.warning(f"⚠️ Supabase init failed: {e} - Will use GitEnglishHub for student lookup")
 else:
-    logger.error("❌ Supabase credentials missing.")
-    sys.exit(1)
+    logger.info("ℹ️ Supabase not configured - Using GitEnglishHub API for everything")
+
+# Check GitEnglishHub is configured
+if not MCP_SECRET:
+    logger.warning("⚠️ MCP_SECRET not set! GitEnglishHub API calls will fail.")
+
 
 # --- Helper Functions (Reused/Adapted from main.py) ---
 
+async def send_to_gitenglish(action: str, student_id: str, params: dict) -> dict:
+    """
+    Send data to GitEnglishHub's Petty Dantic API.
+    This is THE pipeline - Semantic Surfer sends raw data, GitEnglish handles all DB logic.
+    """
+    if not MCP_SECRET:
+        logger.error("❌ MCP_SECRET not set! Cannot call GitEnglishHub API.")
+        return {"success": False, "error": "MCP_SECRET not configured"}
+    
+    url = f"{GITENGLISH_API_BASE}/api/mcp"
+    headers = {
+        "Authorization": f"Bearer {MCP_SECRET}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "action": action,
+        "studentId": student_id,
+        "params": params
+    }
+    
+    logger.info(f"📤 Calling GitEnglishHub: {action}")
+    
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(url, headers=headers, json=payload)
+            
+            if response.status_code == 200:
+                result = response.json()
+                logger.info(f"✅ GitEnglishHub response: {result.get('success', 'unknown')}")
+                return result
+            else:
+                logger.error(f"❌ GitEnglishHub error ({response.status_code}): {response.text}")
+                return {"success": False, "error": response.text, "status_code": response.status_code}
+    except Exception as e:
+        logger.error(f"❌ Failed to call GitEnglishHub: {e}")
+        return {"success": False, "error": str(e)}
+
+
 def get_student_id(name):
-    """Find student ID by name (username or first_name)"""
+    """Find student ID by name (username or first_name) - uses Supabase for local lookup"""
+    if not supabase:
+        logger.warning("Supabase not available - returning name for GitEnglishHub to resolve")
+        return name  # GitEnglishHub can resolve by name
     try:
         # Try exact username match
         res = supabase.table("students").select("id").eq("username", name).execute()
@@ -56,10 +105,10 @@ def get_student_id(name):
         if res.data:
             return res.data[0]['id']
             
-        return None
+        return name  # Let GitEnglishHub resolve
     except Exception as e:
         logger.error(f"Error finding student ID: {e}")
-        return None
+        return name
 
 async def perform_batch_diarization(audio_path):
     """
@@ -76,8 +125,8 @@ async def perform_batch_diarization(audio_path):
         config = aai.TranscriptionConfig(
             speaker_labels=True,
             speakers_expected=2, # Tutor + Student
-            punctuate=True,
-            format_text=True
+            punctuate=True,  # API CONSTRAINT: Required for speaker_labels
+            format_text=False  # Preserve fillers (um, uh) and errors
         )
         
         # Using synchronous transcribe to avoid Python 3.12 Future await error
@@ -174,163 +223,110 @@ Provide a structured JSON response with: teaching_moments, action_items, progres
             logger.warning(f"Note analysis failed: {e}")
             notes_analysis = {"raw_notes": notes}
 
-    # 5. Upload to Supabase (student_sessions)
-    session_data = {
-        "student_id": student_id,
-        "session_date": timestamp,
-        "duration_seconds": int(duration) if duration else 0,
-        # "transcript_json": {"turns": turns}, # Column missing in schema 
-        # "summary": "Manual Ingestion", # Column missing in schema
-        "metrics": {
-            "wpm": 0, 
-            "filler_words": 0,
-            "notes": notes_analysis
-        }
-    }
+    # Build the transcript text for the analysis report
+    student_turns = [t for t in turns if t["speaker"] != "Aaron"]
+    transcript_text = "\n".join([
+        f"{t['speaker']}: {t['transcript']}"
+        for t in turns
+    ])
     
-    try:
-        res = supabase.table("student_sessions").insert(session_data).execute()
-        logger.info(f"✅ Session uploaded to Supabase: {res.data[0]['id']}")
-    except Exception as e:
-        logger.error(f"❌ Failed to upload session: {e}")
+    # Calculate basic metrics
+    total_words = sum(len(t.get('words', [])) for t in student_turns)
+    
+    # Build analysis report
+    analysis_report = f"""Session Analysis
+Duration: {duration}s
+Student Words: {total_words}
+Turns: {len(student_turns)}
+
+{notes_analysis.get('llm_analysis', '') if notes_analysis else ''}
+
+--- Transcript ---
+{transcript_text[:3000]}...
+"""
+
+    # ============================================================
+    # SEND TO GITENGLISHHUB (The proper pipeline!)
+    # This is the ONLY place that should touch databases.
+    # ============================================================
+    logger.info("📤 Sending to GitEnglishHub via Petty Dantic API...")
+    
+    result = await send_to_gitenglish(
+        action='sanity.createLessonAnalysis',
+        student_id=student_id,
+        params={
+            'studentName': student_name,
+            'sessionDate': timestamp,
+            'analysisReport': analysis_report
+        }
+    )
+    
+    if result.get('success'):
+        logger.info("✅ Successfully sent to GitEnglishHub!")
+        logger.info(f"   Response: {result.get('data', {})}")
+    else:
+        logger.error(f"❌ GitEnglishHub upload failed: {result.get('error')}")
+        logger.error("   Check MCP_SECRET matches between systems")
         return
 
-    # 5. Upload to Corpus (student_corpus)
-    logger.info("📚 Building corpus...")
+    # ============================================================
+    # SEND STUDENT WORDS TO CORPUS (Via API)
+    # Extracts words and sends them to GitEnglishHub to handle storage
+    # ============================================================
+    logger.info("📚 Sending student words to corpus via API...")
+    
     corpus_entries = []
-    for i, turn in enumerate(turns):
-        if turn["speaker"] != "Aaron": # Only student turns
-            entry = {
-                "student_id": student_id,
-                "text": turn["transcript"],
-                "source": "transcript",
-                "metadata": {
-                    "session_id": session_id,
-                    "turn_order": i,
-                    "confidence": turn["confidence"]
+    word_position = 0
+    
+    import re
+    
+    for turn in student_turns:
+        words = turn.get('words', [])
+        for word_data in words:
+            raw_text = word_data.get('text', '').strip()
+            # Clean punctuation from the word (e.g. "Hello," -> "Hello")
+            word_text = re.sub(r'[^\w\s]', '', raw_text)
+            
+            if word_text and len(word_text) > 1:  # Skip single chars and empty strings
+                start_ms = word_data.get('start', 0)
+                end_ms = word_data.get('end', 0)
+                
+                corpus_entries.append({
+                    'word_text': word_text,
+                    'word_position': word_position,
+                    'word_start_ms': start_ms,
+                    'word_end_ms': end_ms,
+                    'word_duration_ms': end_ms - start_ms,
+                    'word_confidence': word_data.get('confidence', 0)
+                })
+                word_position += 1
+    
+    # Send corpus entries in batches
+    batch_size = 100
+    for i in range(0, len(corpus_entries), batch_size):
+        batch = corpus_entries[i:i+batch_size]
+        
+        corpus_result = await send_to_gitenglish(
+            action='schema.addToCorpus',
+            student_id=student_id,
+            params={
+                'source': 'semantic_surfer',
+                'words': batch, # Sending RAW word data
+                'metadata': {
+                    'session_id': session_id,
+                    'session_date': timestamp,
+                    'batch_index': i // batch_size
                 }
             }
-            corpus_entries.append(entry)
-    
-    if corpus_entries:
-        try:
-            supabase.table("student_corpus").insert(corpus_entries).execute()
-            logger.info(f"✅ Added {len(corpus_entries)} turn entries to student corpus")
-        except Exception as e:
-            logger.error(f"❌ Failed to upload corpus: {e}")
-
-    # 6. Upload Word-Level Corpus
-    logger.info("📖 Building word-level corpus...")
-    word_corpus_entries = []
-    for i, turn in enumerate(turns):
-        if turn["speaker"] != "Aaron": # Only student turns
-            for word in turn.get("words", []):
-                word_entry = {
-                    "student_id": student_id,
-                    "text": word.get("text", ""),
-                    "source": "word",
-                    "metadata": {
-                        "session_id": session_id,
-                        "turn_order": i,
-                        "word_start_ms": word.get("start"),
-                        "word_end_ms": word.get("end"),
-                        "confidence": word.get("confidence")
-                    }
-                }
-                word_corpus_entries.append(word_entry)
-    
-    if word_corpus_entries:
-        try:
-            # Insert in batches to avoid rate limits
-            batch_size = 100
-            for i in range(0, len(word_corpus_entries), batch_size):
-                batch = word_corpus_entries[i:i + batch_size]
-                supabase.table("student_corpus").insert(batch).execute()
-            logger.info(f"✅ Added {len(word_corpus_entries)} individual words to corpus")
-        except Exception as e:
-            logger.error(f"❌ Failed to upload word corpus: {e}")
-
-    # 6. Run LeMUR Analysis (8 Categories)
-    logger.info("🤖 Running LeMUR Classification (8 Categories)...")
-    try:
-        from analyzers.lemur_query import run_lemur_query
-        
-        # Save temp session file for LeMUR to read
-        temp_session_path = Path(f"sessions/temp_{session_id}.json")
-        temp_session_data = {
-            "session_id": session_id,
-            "student_name": student_name,
-            "speaker_map": speaker_map,
-            "turns": turns
-        }
-        with open(temp_session_path, 'w') as f:
-            json.dump(temp_session_data, f)
-            
-        classification_prompt = (
-            "Analyze the student's speech based ONLY on the text transcript. Do NOT hallucinate audio features like pronunciation or flow. "
-            "1. **Topics & Subjects**: List the main topics discussed (e.g., 'Travel', 'Business Meetings').\n"
-            "2. **Linguistic Analysis**: Rate (1-10) and comment on these 6 text-based categories:\n"
-            "   - Grammar (Syntax, tense usage)\n"
-            "   - Vocabulary (Word choice, range)\n"
-            "   - Phrasal Verbs (Usage of multi-word verbs)\n"
-            "   - Expressions (Idiomatic usage)\n"
-            "   - Discourse (Coherence, sentence structure)\n"
-            "   - Sociolinguistics (Register, politeness, tone)\n"
-            "Format the output as a structured JSON-like list."
         )
         
-        analysis_results = run_lemur_query(temp_session_path, custom_prompt=classification_prompt)
-        
-        # Clean up temp file
-        if temp_session_path.exists():
-            temp_session_path.unlink()
-            
-        # 7. Upload Report to Sanity (via API)
-        import httpx
-        
-        sanity_project_id = os.getenv("SANITY_PROJECT_ID")
-        sanity_dataset = os.getenv("SANITY_DATASET", "production")
-        sanity_token = os.getenv("SANITY_API_TOKEN") or os.getenv("SANITY_API_KEY")
-        
-        if sanity_project_id and sanity_token:
-            logger.info("📤 Uploading Report to Sanity...")
-            url = f"https://{sanity_project_id}.api.sanity.io/v2021-06-07/data/mutate/{sanity_dataset}"
-            headers = {
-                "Authorization": f"Bearer {sanity_token}",
-                "Content-Type": "application/json"
-            }
-            
-            # Create a simple document
-            lemur_response = analysis_results.get('lemur_analysis', {}).get('response', 'No analysis generated.')
-            
-            mutations = {
-                "mutations": [
-                    {
-                        "create": {
-                            "_type": "lessonAnalysis", # Generic type
-                            "studentName": student_name,
-                            "sessionDate": timestamp,
-                            "analysisReport": lemur_response,
-                            "scores": {} # Placeholder for parsed scores if needed
-                        }
-                    }
-                ]
-            }
-            
-            async with httpx.AsyncClient() as client:
-                res = await client.post(url, headers=headers, json=mutations)
-                
-            if res.status_code == 200:
-                logger.info(f"✅ Sanity Upload Success: {res.json()}")
-            else:
-                logger.error(f"❌ Sanity Upload Failed: {res.text}")
+        if corpus_result.get('success'):
+            logger.info(f"   ✅ Batch {i // batch_size + 1}: {len(batch)} words sent")
         else:
-            logger.warning("⚠️ Sanity credentials missing. Skipping upload.")
-
-    except Exception as e:
-        logger.error(f"❌ Analysis/Sanity Error: {e}")
+            logger.warning(f"   ⚠️ Batch {i // batch_size + 1} failed: {corpus_result.get('error')}")
 
     logger.info("🎉 Ingestion Complete!")
+
 
 # --- Main Interactive Loop ---
 async def main():
