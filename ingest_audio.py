@@ -410,7 +410,7 @@ Turns: {len(student_turns)}
                 word_position += 1
     
     # Send corpus entries in batches
-    batch_size = 100
+    batch_size = 25
     for i in range(0, len(corpus_entries), batch_size):
         batch = corpus_entries[i:i+batch_size]
         
