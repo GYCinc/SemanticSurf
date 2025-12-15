@@ -2,13 +2,19 @@
 """
 Comprehensive Session Analysis Engine (STUDENT-ONLY + LOCAL AI)
 Analyzes ESL lesson transcripts for teaching insights using local, free tools.
+
+Implements SLA Framework metrics:
+- N-gram/cluster analysis (AntConc-style)
+- Penn Treebank POS tagging
+- WordNet lemmatization with POS
+- CAF metrics (Complexity, Accuracy, Fluency)
 """
 
 import json
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 import sys
 import logging
 
@@ -18,6 +24,26 @@ try:
 except ImportError:
     print("WARNING: textblob not found. Run 'pip install textblob' for advanced metrics.")
     TEXTBLOB_AVAILABLE = False
+
+# NLTK for advanced NLP (Penn Treebank POS, WordNet, N-grams)
+try:
+    import nltk
+    from nltk import word_tokenize, pos_tag, ngrams
+    from nltk.stem import WordNetLemmatizer
+    from nltk.corpus import wordnet
+    NLTK_AVAILABLE = True
+    # Ensure required data is downloaded
+    for resource in ['punkt', 'averaged_perceptron_tagger', 'wordnet', 'punkt_tab', 'averaged_perceptron_tagger_eng']:
+        try:
+            nltk.data.find(f'tokenizers/{resource}' if 'punkt' in resource else f'taggers/{resource}' if 'tagger' in resource else f'corpora/{resource}')
+        except LookupError:
+            try:
+                nltk.download(resource, quiet=True)
+            except:
+                pass
+except ImportError:
+    NLTK_AVAILABLE = False
+    print("WARNING: nltk not found. Run 'pip install nltk' for POS tagging and n-grams.")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -76,6 +102,10 @@ class SessionAnalyzer:
             'advanced_local_analysis': self.run_textblob_analysis(),
             'fillers': self.analyze_fillers(self.student_turns),
             'hesitation_patterns': self.analyze_hesitation_patterns(self.student_turns),
+            # SLA Framework additions
+            'ngram_analysis': self.analyze_ngrams(self.student_full_text),
+            'pos_analysis': self.analyze_pos_tags(self.student_full_text),
+            'caf_metrics': self.analyze_caf(self.student_turns),
         }
 
         teacher_metrics = {
@@ -287,6 +317,235 @@ class SessionAnalyzer:
             'frequent_hesitation_words': dict(word_freq.most_common(10)),
             'details': hesitation_words[:20]  # First 20 for inspection
         }
+
+    # =========================================================================
+    # SLA FRAMEWORK ANALYSIS (N-grams, POS, CAF)
+    # Per: LEXICAL RESOURCES/SLA Transcript Analysis Framework.txt
+    # =========================================================================
+
+    def _get_wordnet_pos(self, treebank_tag: str) -> str:
+        """Convert Penn Treebank POS tag to WordNet POS tag for lemmatization"""
+        if treebank_tag.startswith('J'):
+            return wordnet.ADJ
+        elif treebank_tag.startswith('V'):
+            return wordnet.VERB
+        elif treebank_tag.startswith('N'):
+            return wordnet.NOUN
+        elif treebank_tag.startswith('R'):
+            return wordnet.ADV
+        else:
+            return wordnet.NOUN  # Default to noun
+
+    def analyze_ngrams(self, text: str, n_range: Tuple[int, int] = (2, 4)) -> Dict[str, Any]:
+        """
+        Extract n-grams (bigrams, trigrams, 4-grams) for formulaic language detection.
+        AntConc-style cluster/n-gram analysis per SLA Framework.
+        """
+        if not NLTK_AVAILABLE or not text:
+            return {'error': 'NLTK not available or no text', 'bigrams': [], 'trigrams': [], 'fourgrams': []}
+        
+        try:
+            # Tokenize and clean
+            tokens = word_tokenize(text.lower())
+            # Filter out punctuation and short tokens
+            tokens = [t for t in tokens if t.isalpha() and len(t) > 1]
+            
+            results = {}
+            for n in range(n_range[0], n_range[1] + 1):
+                n_grams = list(ngrams(tokens, n))
+                # Count frequencies
+                ngram_freq = Counter([' '.join(gram) for gram in n_grams])
+                # Get top 15 most common
+                top_ngrams = ngram_freq.most_common(15)
+                
+                label = {2: 'bigrams', 3: 'trigrams', 4: 'fourgrams'}.get(n, f'{n}grams')
+                results[label] = [{'phrase': phrase, 'count': count} for phrase, count in top_ngrams]
+            
+            # Identify formulaic sequences (repeated 3+ times)
+            formulaic = []
+            for n in range(2, 5):
+                n_grams = list(ngrams(tokens, n))
+                ngram_freq = Counter([' '.join(gram) for gram in n_grams])
+                for phrase, count in ngram_freq.items():
+                    if count >= 3:
+                        formulaic.append({'phrase': phrase, 'count': count, 'length': n})
+            
+            results['formulaic_sequences'] = sorted(formulaic, key=lambda x: x['count'], reverse=True)[:10]
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"N-gram analysis failed: {e}")
+            return {'error': str(e)}
+
+    def analyze_pos_tags(self, text: str) -> Dict[str, Any]:
+        """
+        Penn Treebank POS tagging with WordNet lemmatization.
+        Returns POS distribution and vocabulary by category.
+        """
+        if not NLTK_AVAILABLE or not text:
+            return {'error': 'NLTK not available or no text'}
+        
+        try:
+            tokens = word_tokenize(text)
+            tagged = pos_tag(tokens)
+            
+            # Initialize lemmatizer
+            lemmatizer = WordNetLemmatizer()
+            
+            # Categorize by Penn Treebank tags
+            pos_categories = {
+                'nouns': [],      # NN, NNS, NNP, NNPS
+                'verbs': [],      # VB, VBD, VBG, VBN, VBP, VBZ
+                'adjectives': [], # JJ, JJR, JJS
+                'adverbs': [],    # RB, RBR, RBS
+                'prepositions': [], # IN
+                'determiners': [], # DT
+                'pronouns': [],   # PRP, PRP$, WP
+                'other': []
+            }
+            
+            lemmas = []
+            pos_counts = Counter()
+            
+            for word, tag in tagged:
+                if not word.isalpha():
+                    continue
+                    
+                pos_counts[tag] += 1
+                
+                # Lemmatize with correct POS
+                wn_pos = self._get_wordnet_pos(tag)
+                lemma = lemmatizer.lemmatize(word.lower(), wn_pos)
+                lemmas.append(lemma)
+                
+                # Categorize
+                if tag.startswith('NN'):
+                    pos_categories['nouns'].append(lemma)
+                elif tag.startswith('VB'):
+                    pos_categories['verbs'].append(lemma)
+                elif tag.startswith('JJ'):
+                    pos_categories['adjectives'].append(lemma)
+                elif tag.startswith('RB'):
+                    pos_categories['adverbs'].append(lemma)
+                elif tag == 'IN':
+                    pos_categories['prepositions'].append(word.lower())
+                elif tag == 'DT':
+                    pos_categories['determiners'].append(word.lower())
+                elif tag.startswith('PRP') or tag.startswith('WP'):
+                    pos_categories['pronouns'].append(word.lower())
+                else:
+                    pos_categories['other'].append(word.lower())
+            
+            # Get unique items per category
+            unique_by_category = {k: list(set(v)) for k, v in pos_categories.items()}
+            counts_by_category = {k: len(v) for k, v in pos_categories.items()}
+            
+            # Content word ratio (nouns + verbs + adjectives + adverbs / total)
+            content_words = len(pos_categories['nouns']) + len(pos_categories['verbs']) + \
+                           len(pos_categories['adjectives']) + len(pos_categories['adverbs'])
+            total_words = sum(counts_by_category.values())
+            lexical_density = round(content_words / total_words, 3) if total_words > 0 else 0
+            
+            return {
+                'pos_distribution': dict(pos_counts.most_common()),
+                'counts_by_category': counts_by_category,
+                'unique_by_category': {k: v[:20] for k, v in unique_by_category.items()},  # Top 20 each
+                'total_unique_lemmas': len(set(lemmas)),
+                'lexical_density': lexical_density,
+                'content_word_ratio': f"{content_words}/{total_words}"
+            }
+            
+        except Exception as e:
+            logger.error(f"POS analysis failed: {e}")
+            return {'error': str(e)}
+
+    def analyze_caf(self, turns: List[Dict]) -> Dict[str, Any]:
+        """
+        Complexity, Accuracy, Fluency (CAF) metrics.
+        Per SLA Framework: MLT, C/T, Error-Free T-units, articulation rate.
+        """
+        if not turns:
+            return {'error': 'No turns to analyze'}
+        
+        try:
+            # Collect all text
+            all_text = ' '.join([t.get('transcript', '') for t in turns])
+            if not all_text:
+                return {'error': 'No transcript text'}
+            
+            # T-unit approximation: Split by sentence boundaries
+            # A T-unit = main clause + attached subordinate clauses
+            # Approximation: sentences (split by . ! ?)
+            sentences = re.split(r'[.!?]+', all_text)
+            sentences = [s.strip() for s in sentences if s.strip()]
+            t_units = len(sentences)
+            
+            if t_units == 0:
+                return {'error': 'No T-units detected'}
+            
+            # --- COMPLEXITY ---
+            total_words = len(all_text.split())
+            mlt = round(total_words / t_units, 2) if t_units > 0 else 0  # Mean Length of T-unit
+            
+            # Count clauses (approximation: count subordinating conjunctions + sentences)
+            subordinators = ['that', 'which', 'who', 'whom', 'whose', 'when', 'where', 'while', 
+                           'because', 'although', 'if', 'unless', 'since', 'after', 'before']
+            clause_markers = sum(all_text.lower().count(f' {sub} ') for sub in subordinators)
+            total_clauses = t_units + clause_markers
+            c_t = round(total_clauses / t_units, 2) if t_units > 0 else 0  # Clauses per T-unit
+            
+            # --- FLUENCY ---
+            # From existing pause/filler analysis
+            total_pauses = sum(len(t.get('analysis', {}).get('pauses', [])) for t in turns)
+            total_fillers = 0
+            filler_words = ['um', 'uh', 'like', 'you know', 'so', 'well', 'actually']
+            for turn in turns:
+                text = turn.get('transcript', '').lower()
+                for filler in filler_words:
+                    total_fillers += len(re.findall(r'\b' + filler + r'\b', text))
+            
+            # Mean Length of Run (words between pauses)
+            mlr = round(total_words / (total_pauses + 1), 2) if total_pauses >= 0 else total_words
+            
+            # Filled pauses per 100 words
+            filled_pause_rate = round((total_fillers / total_words) * 100, 2) if total_words > 0 else 0
+            
+            # --- ACCURACY (approximation) ---
+            # We can't do true error detection without gold standard, but we can flag:
+            # - Repeated words (false starts)
+            # - Very short sentences (fragments)
+            
+            false_starts = len(re.findall(r'\b(\w+)\s+\1\b', all_text, re.IGNORECASE))
+            short_tunits = sum(1 for s in sentences if len(s.split()) < 3)
+            error_free_approx = t_units - short_tunits - false_starts
+            error_free_pct = round((error_free_approx / t_units) * 100, 1) if t_units > 0 else 0
+            
+            return {
+                'complexity': {
+                    'total_t_units': t_units,
+                    'total_words': total_words,
+                    'mean_length_t_unit': mlt,
+                    'clauses_per_t_unit': c_t,
+                    'interpretation': 'Higher MLT and C/T = more complex syntax'
+                },
+                'fluency': {
+                    'mean_length_run': mlr,
+                    'total_pauses': total_pauses,
+                    'filled_pause_rate_per_100': filled_pause_rate,
+                    'interpretation': 'Higher MLR = more fluent; Lower pause rate = smoother'
+                },
+                'accuracy_approximation': {
+                    'error_free_t_units_pct': max(0, error_free_pct),
+                    'false_starts_detected': false_starts,
+                    'fragments_detected': short_tunits,
+                    'note': 'True accuracy requires human annotation'
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"CAF analysis failed: {e}")
+            return {'error': str(e)}
 
     def _build_comparison(self, student_metrics: Dict, teacher_metrics: Dict) -> Dict[str, Any]:
         """Build side-by-side comparison metrics"""
