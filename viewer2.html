@@ -1,474 +1,457 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Semantic Surfer - Crimson Glass</title>
-    <!-- Tailwind CSS (via CDN for runtime speed) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & ReactDOM (via CDN) -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Semantic Server</title>
+
+    <!-- React & Babel -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-
-    <!-- Babel for in-browser JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Framer Motion -->
-    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amaranth:ital,wght@0,400;0,700;1,400&family=Asap:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
     <style>
+        /* BASE & RESET */
+        :root {
+            --hue1: 255;
+            --hue2: 222;
+            --border: 1px;
+            --border-color: hsl(var(--hue2), 12%, 20%);
+            --radius: 22px;
+            --ease: cubic-bezier(0.5, 1, 0.89, 1);
+            --fg: oklab(0.9 0 0); /* Foreground approximation */
+        }
+
         body {
             margin: 0;
+            background: #08090d box-shadow: inset 0 0 100px black;
+            background-image: url(https://assets.codepen.io/13471/abstract-light.jpg), linear-gradient(to right in oklab, hsl(var(--hue2) 50% 75%), hsl(var(--hue1) 50% 75%));
+            background-size: cover;
+            background-position: center;
+            background-blend-mode: hard-light;
+            font-family: 'Asap', sans-serif;
+            color: #737985;
             overflow: hidden;
-            background-color: #000;
-            font-family: 'Inter', sans-serif;
-            color: #e5e5e5;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
-
-        /* Glass Utilities */
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
-        .glass-input {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            transition: all 0.2s ease;
-        }
-        .glass-input:focus {
-            outline: none;
-            border-color: rgba(220, 38, 38, 0.5); /* Red-600 */
-            background: rgba(0, 0, 0, 0.8);
-        }
-
-        /* Animation utilities */
-        .fade-enter { opacity: 0; transform: translateY(10px); }
-        .fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms, transform 300ms; }
-
-        /* Loading Spinner */
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255,255,255,0.1);
-            border-radius: 50%;
-            border-top-color: #ef4444; /* Red-500 */
-            animation: spin 1s ease-in-out infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div id="loading-overlay">
-        <span class="loader"></span>
-    </div>
-    <div id="root"></div>
-
-        #root {
-            width: 100vw;
             height: 100vh;
         }
 
-        /* Selection Highlight */
-        ::selection {
-            background: rgba(239, 68, 68, 0.3);
+        .app-drag-region { -webkit-app-region: drag; }
+        .app-no-drag { -webkit-app-region: no-drag; }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 24px;
+            box-sizing: border-box;
+            gap: 24px;
+        }
+
+        /* CARD COMPONENT (The "Menu" Style) */
+        .glass-card {
+            position: relative;
+            border-radius: var(--radius);
+            border: var(--border) solid var(--border-color);
+            padding: 1.5em;
+            background: linear-gradient(235deg, hsl(var(--hue1) 50% 10% / 0.8), hsl(var(--hue1) 50% 10% / 0) 33%), 
+                        linear-gradient(45deg , hsl(var(--hue2) 50% 10% / 0.8), hsl(var(--hue2) 50% 10% / 0) 33%), 
+                        linear-gradient(hsl(220deg 25% 4.8% / 0.66));
+            backdrop-filter: blur(12px);
+            box-shadow: hsl(var(--hue2) 50% 2%) 0px 10px 16px -8px, hsl(var(--hue2) 50% 4%) 0px 20px 36px -14px;
+            transition: all 0.5s var(--ease);
+        }
+
+        /* SHINE & GLOW EFFECTS */
+        .glass-card .shine {
+            pointer-events: none;
+            border-radius: inherit;
+            border: 1px solid transparent;
+            position: absolute;
+            inset: -1px;
+            z-index: 1;
+            background: conic-gradient(
+                from var(--conic, -45deg) at center in oklch,
+                transparent 12%, hsl(var(--hue1), 80%, 60%), transparent 50%
+            ) border-box;
+            mask: linear-gradient(transparent), linear-gradient(black);
+            mask-composite: subtract;
+            mask-clip: padding-box, border-box;
+            animation: glow 2s var(--ease) both;
+        }
+
+        .glass-card .glow {
+            pointer-events: none;
+            position: absolute;
+            inset: -20px;
+            border: 20px solid transparent;
+            border-radius: 40px;
+            mask: url('https://assets.codepen.io/13471/noise-base.png');
+            mask-mode: luminance;
+            mask-size: 29%;
+            filter: blur(12px) saturate(1.25) brightness(0.5);
+            mix-blend-mode: plus-lighter;
+            z-index: 3;
+            animation: glow 2s var(--ease) both;
+            animation-delay: 0.2s;
+        }
+        
+        .glass-card .glow::before {
+            content: ""; position: absolute; inset: 0;
+            background: conic-gradient(from -45deg at center, transparent 0%, hsl(var(--hue1), 95%, 60%), transparent 50%);
+            mask: linear-gradient(black), linear-gradient(transparent);
+            mask-composite: exclude;
+        }
+
+        @keyframes glow {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes flash {
+            0% { opacity: 1; background-color: white; }
+            100% { opacity: 1; }
+        }
+
+        /* CONTROLS STYLING */
+        input.glass-input, select.glass-input {
+            width: 100%;
+            height: 48px;
+            color: hsl(0 0 100% / 0.8);
+            font-family: 'Asap', sans-serif;
+            font-size: 14px;
+            font-weight: 300;
+            border: 1px solid hsl(var(--hue2) 13% 18.5% / 0.5);
+            background: linear-gradient(to bottom, hsl(var(--hue1) 20% 20% / 0.1) 0%, hsl(var(--hue1) 50% 50% / 0.2) 100%);
+            border-radius: 12px;
+            padding: 0 16px;
+            outline: none;
+            transition: all 0.3s var(--ease);
+            appearance: none;
+        }
+        input.glass-input:focus, select.glass-input:focus {
+            border-color: hsl(var(--hue1) 50% 60% / 0.5);
+            background-color: hsl(var(--hue1) 20% 20% / 0.3);
+            box-shadow: 0 0 20px hsl(var(--hue1) 50% 60% / 0.1);
+        }
+
+        /* BUTTONS via LI style */
+        .glass-btn {
+            position: relative;
+            padding: 0 1.5em;
+            height: 48px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5em;
+            border-radius: 12px;
+            border: 1px solid transparent;
+            background: linear-gradient(90deg in oklch, hsl(var(--hue2) 29% 13% / 0.3), hsl(var(--hue2) 30% 15% / 0.3));
+            color: #bdc1c6;
+            cursor: pointer;
+            transition:all 0.3s;
+            font-family: 'Asap', sans-serif;
+            font-weight: 500;
+            user-select: none;
+        }
+        
+        .glass-btn:hover {
             color: white;
+            background: linear-gradient(90deg in oklch, hsl(var(--hue1) 30% 20% / 0.6), hsl(var(--hue1) 40% 30% / 0.6));
+            box-shadow: 0 0 15px hsl(var(--hue1) 50% 50% / 0.2);
+        }
+
+        .glass-btn.active {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .glass-btn.danger {
+            background: linear-gradient(90deg, #ef4444 0%, #b91c1c 100%);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+        }
+
+        /* LAYOUTS */
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        
+        .transcript-area {
+            flex: 1;
+            overflow-y: auto;
+            border-radius: var(--radius);
+            padding: 2px; /* For scrollbar breathing room */
+        }
+        
+        .transcript-bubble {
+            margin-bottom: 24px;
+            animation: slideUp 0.4s var(--ease);
+        }
+        
+        .speaker {
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: hsl(var(--hue2) 70% 70%);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .speaker::before {
+            content:''; width: 6px; height: 6px; background: hsl(var(--hue2) 70% 70%); border-radius: 50%;
+            box-shadow: 0 0 8px hsl(var(--hue2) 70% 70%);
+        }
+        
+        .text-content {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #e2e8f0;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            font-weight: 300;
+        }
+        
+        .partial {
+            color: #94a3b8;
+            opacity: 0.7;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); filter: blur(5px); }
+            to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { 
+            background: hsl(var(--hue2) 15% 30%); 
+            border-radius: 4px; 
+            border: 2px solid #08090d;
         }
     </style>
 </head>
 <body>
-    <div id="error-overlay" style="display:none; position:fixed; inset:0; background:#450a0a; color:white; padding:20px; z-index:9999; font-family:sans-serif;">
-        <h2 style="color:#ef4444">Application Error</h2>
-        <pre id="error-message" style="white-space:pre-wrap; background:rgba(0,0,0,0.3); padding:10px; border-radius:4px;"></pre>
-        <button onclick="location.reload()" style="margin-top:20px; padding:8px 16px; background:white; color:black; border:none; border-radius:4px; cursor:pointer;">Retry</button>
-    </div>
-
     <div id="root"></div>
 
-    <script>
-        // Global Error Handler to catch React/CDN failures
-        window.onerror = function(msg, url, line, col, error) {
-            document.getElementById('error-overlay').style.display = 'block';
-            document.getElementById('error-message').textContent = `${msg}\n\nAt: ${url}:${line}:${col}\n\n${error?.stack || ''}`;
-            return false;
-        };
-    </script>
-
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef } = React;
 
-        // Safe Motion Destructuring (Fallback if CDN fails)
-        const MotionLib = window.Motion || {
-            motion: new Proxy({}, { get: () => 'div' }),
-            AnimatePresence: ({children}) => children
-        };
-        const { motion, AnimatePresence } = MotionLib;
-
-        // --- COMPONENTS ---
-
-        // 1. Custom Dropdown (Glass)
-        const GlassDropdown = ({ options, value, onChange, placeholder = "Select..." }) => {
-            const [isOpen, setIsOpen] = useState(false);
-            const ref = useRef(null);
-
-            // Close on click outside
-            useEffect(() => {
-                const handleClickOutside = (event) => {
-                    if (ref.current && !ref.current.contains(event.target)) {
-                        setIsOpen(false);
-                    }
-                };
-                document.addEventListener("mousedown", handleClickOutside);
-                return () => document.removeEventListener("mousedown", handleClickOutside);
-            }, []);
-
-            const selectedLabel = options.find(o => o.value === value)?.label || placeholder;
-
-            return (
-                <div className="relative w-64 z-50" ref={ref}>
-                    <button
-                        onClick={() => setIsOpen(!isOpen)}
-                        className="w-full flex items-center justify-between px-4 py-2 glass-panel rounded-lg hover:bg-white/10 transition-colors text-sm font-medium text-white/90"
-                    >
-                        <span className="truncate">{selectedLabel}</span>
-                        <svg className={`w-4 h-4 ml-2 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-
-                    <AnimatePresence>
-                        {isOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="absolute top-full left-0 w-full mt-2 glass-panel bg-[#1a0505] border border-red-500/20 rounded-lg shadow-2xl overflow-hidden max-h-60 overflow-y-auto"
-                            >
-                                {options.map((opt) => (
-                                    <button
-                                        key={opt.value}
-                                        onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-red-900/30 transition-colors ${value === opt.value ? 'text-red-400 bg-red-900/20' : 'text-white/70'}`}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            );
-        };
-
-        // 2. Transcript Word Component (Clickable)
-        const TranscriptWord = ({ word, onClick }) => {
-            // Determine color based on confidence
-            let colorClass = "text-white";
-            if (word.confidence < 0.5) colorClass = "text-red-400";
-            else if (word.confidence < 0.75) colorClass = "text-yellow-200";
-
-            return (
-                <motion.span
-                    whileHover={{ scale: 1.2, y: -2 }}
-                    onClick={(e) => {
-                        e.stopPropagation(); // Stop line click
-                        onClick(word);
-                    }}
-                    className={`inline-block cursor-pointer hover:bg-red-500/30 rounded px-0.5 transition-colors duration-150 ${colorClass}`}
-                    title={`Confidence: ${(word.confidence * 100).toFixed(0)}%`}
-                >
-                    {word.text}{' '}
-                </motion.span>
-            );
-        };
-
-        // 3. Transcript Row (Staircase Animation)
-        const TranscriptRow = ({ turn, onWordClick, onLineClick }) => {
-            return (
-                <motion.div 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="mb-6 group"
-                >
-                    <div className="flex items-baseline mb-1">
-                        <span className={`text-xs font-bold uppercase tracking-wider mr-3 ${turn.speaker === 'Aaron' ? 'text-red-400' : 'text-blue-300'}`}>
-                            {turn.speaker || 'Unknown'}
-                        </span>
-                        <span className="text-xs text-white/30 font-mono">
-                            {new Date(turn.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
-                        </span>
-                    </div>
-
-                    {/* Interactive Line Container */}
-                    <div
-                        className="pl-4 border-l-2 border-white/10 group-hover:border-red-500/50 transition-colors duration-300 cursor-pointer hover:bg-white/5 rounded-r-lg p-2 -ml-2"
-                        onClick={() => onLineClick(turn)}
-                        title="Click to copy full line"
-                    >
-                        <p className="text-lg leading-relaxed text-white/90">
-                            {turn.words && turn.words.length > 0 ? (
-                                turn.words.map((w, i) => (
-                                    <TranscriptWord key={i} word={w} onClick={() => onWordClick(w, turn)} />
-                                ))
-                            ) : (
-                                <span>{turn.text}</span>
-                            )}
-                        </p>
-                    </div>
-                </motion.div>
-            );
-        };
-
-        // --- MAIN APP ---
-        const App = () => {
-            const [status, setStatus] = useState("Connecting...");
-            const [ws, setWs] = useState(null);
-            const [session, setSession] = useState({ turns: [], notes: "", student_name: "Unknown", wpm: 0 });
+        function App() {
+            // STATE
+            const [isConnected, setIsConnected] = useState(false);
             const [students, setStudents] = useState([]);
-            const [markedNotes, setMarkedNotes] = useState([]);
-
-            // Ref for auto-scrolling
+            const [selectedStudent, setSelectedStudent] = useState('');
+            const [transcript, setTranscript] = useState([]);
+            const [isSessionActive, setIsSessionActive] = useState(false);
+            const [wpm, setWpm] = useState(0);
+            const [isPinned, setIsPinned] = useState(false);
+            const wsRef = useRef(null);
             const transcriptEndRef = useRef(null);
 
-            // Scroll to bottom when turns change
+            // WEBSOCKET
             useEffect(() => {
-                transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
-            }, [session.turns]);
+                const connect = () => {
+                    const ws = new WebSocket('ws://localhost:8765');
+                    wsRef.current = ws;
 
-            // WebSocket Connection
-            useEffect(() => {
-                const socket = new WebSocket("ws://localhost:8765");
+                    ws.onopen = () => {
+                        setIsConnected(true);
+                        ws.send(JSON.stringify({ type: 'get_students' }));
+                    };
 
-                socket.onopen = () => {
-                    setStatus("Online");
-                    setWs(socket);
+                    ws.onmessage = (e) => {
+                        const data = JSON.parse(e.data);
+                        handleMessage(data);
+                    };
+
+                    ws.onclose = () => {
+                        setIsConnected(false);
+                        setTimeout(connect, 2000);
+                    };
                 };
-
-                socket.onclose = () => setStatus("Disconnected");
-
-                socket.onmessage = (event) => {
-                    try {
-                        const msg = JSON.parse(event.data);
-                        handleMessage(msg);
-                    } catch (e) {
-                        console.error("Parse error:", e);
-                    }
-                };
-
-                return () => socket.close();
+                connect();
             }, []);
 
-            const handleMessage = (msg) => {
-                if (msg.message_type === "student_list") {
-                    setStudents(msg.students.map(s => ({ value: s, label: s })));
-                } else if (msg.message_type === "transcript") {
-                    setSession(prev => ({
-                        ...prev,
-                        turns: [...prev.turns, { ...msg, words: msg.words || [] }], // Ensure words array exists
-                        wpm: msg.speaking_rate_wpm || prev.wpm
-                    }));
-                } else if (msg.message_type === "partial") {
-                    // Optional: Handle partials if you want real-time text updating before final
+            const handleMessage = (data) => {
+                if (data.message_type === 'student_list') {
+                    setStudents(data.students || []);
+                } else if (data.message_type === 'transcript' || data.message_type === 'partial') {
+                    setTranscript(prev => {
+                        // Logic to merge partials or add new finalized turns
+                        const newTurn = {
+                            id: data.turn_id || Date.now(),
+                            speaker: data.speaker || 'Unknown',
+                            text: data.text,
+                            isPartial: data.message_type === 'partial'
+                        };
+                        
+                        // Replace partial if exists, or add new
+                        const last = prev[prev.length - 1];
+                        if (last && last.isPartial) {
+                            // If incoming is finalized or newer partial, replace/update
+                             return [...prev.slice(0, -1), newTurn];
+                        }
+                        return [...prev, newTurn];
+                    });
+                    
+                    if (data.speaking_rate_wpm) setWpm(Math.round(data.speaking_rate_wpm));
                 }
             };
 
-            const handleWordClick = (word, turn) => {
-                // Copy to clipboard
-                navigator.clipboard.writeText(word.text).catch(err => console.error("Clipboard copy failed:", err));
+            // AUTO-SELECT ANDREA
+            useEffect(() => {
+                if (students.includes("Andrea") && !selectedStudent) {
+                    setSelectedStudent("Andrea");
+                }
+            }, [students]);
 
-                // Add to marked notes
-                const note = {
-                    id: Date.now(),
-                    text: word.text,
-                    context: turn.text,
-                    timestamp: new Date().toLocaleTimeString(),
-                    type: 'vocabulary' // Default type
-                };
-                setMarkedNotes(prev => [note, ...prev]);
+            // PINNED
+            useEffect(() => {
+                const saved = localStorage.getItem('isPinned') === 'true';
+                setIsPinned(saved);
+                if (saved && window.electronAPI) window.electronAPI.setAlwaysOnTop(true);
+            }, []);
 
-                // Send to backend
-                if (ws) {
-                    ws.send(JSON.stringify({
-                        message_type: "mark_update",
-                        turn_order: turn.turn_order,
-                        mark_type: "vocabulary", // Can be customized
-                        timestamp: new Date().toISOString()
+            const togglePin = () => {
+                const newVal = !isPinned;
+                setIsPinned(newVal);
+                localStorage.setItem('isPinned', newVal);
+                if (window.electronAPI) window.electronAPI.setAlwaysOnTop(newVal);
+            };
+
+            // SESSION CONTROL (Using WS not Fetch)
+            const toggleSession = () => {
+                if (!selectedStudent || !wsRef.current) return;
+
+                if (isSessionActive) {
+                    wsRef.current.send(JSON.stringify({ message_type: 'end_session' }));
+                    setIsSessionActive(false);
+                    setTranscript([]); // clear on stop
+                } else {
+                    wsRef.current.send(JSON.stringify({ 
+                        message_type: 'start_session', 
+                        student_name: selectedStudent 
                     }));
+                    setIsSessionActive(true);
                 }
             };
 
-            const handleLineClick = (turn) => {
-                const fullText = turn.words ? turn.words.map(w => w.text).join(' ') : turn.text;
-
-                // Copy to clipboard
-                navigator.clipboard.writeText(fullText).catch(err => console.error("Clipboard copy failed:", err));
-
-                // Add to marked notes as "Expression" or "Sentence"
-                const note = {
-                    id: Date.now(),
-                    text: fullText,
-                    context: "Full Line",
-                    timestamp: new Date().toLocaleTimeString(),
-                    type: 'expression'
-                };
-                setMarkedNotes(prev => [note, ...prev]);
-
-                if (ws) {
-                    ws.send(JSON.stringify({
-                        message_type: "mark_update",
-                        turn_order: turn.turn_order,
-                        mark_type: "expression",
-                        timestamp: new Date().toISOString()
-                    }));
-                }
-            };
-
-            const handleStudentChange = (name) => {
-                setSession(prev => ({ ...prev, student_name: name }));
-                if (ws) {
-                    ws.send(JSON.stringify({
-                        message_type: "start_session",
-                        student_name: name
-                    }));
-                }
-            };
+            // SCROLL
+            useEffect(() => {
+                transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [transcript]);
 
             return (
-                <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-[#450a0a] via-[#991b1b] to-[#450a0a] text-white font-sans">
-
-                    {/* LEFT: Transcript Area */}
-                    <div className="flex-1 flex flex-col relative z-10">
-                        {/* Header (Higher Z-Index to overlap Sidebar if needed) */}
-                        <header className="relative z-30 h-16 flex items-center justify-between px-6 border-b border-white/10 backdrop-blur-md bg-black/20 select-none" style={{ WebkitAppRegion: "drag" }}>
-                            <div className="flex items-center space-x-4">
-                                <div className={`w-2 h-2 rounded-full ${status === 'Online' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`} />
-                                <h1 className="text-lg font-bold tracking-tight text-white/90">SEMANTIC SURFER</h1>
+                <div id="app">
+                    
+                    {/* HEADER CARD - The "Menu" Aesthetic */}
+                    <div className="glass-card app-drag-region">
+                        <div className="shine"></div>
+                        <div className="glow"></div>
+                        
+                        <div className="header-row" style={{position: 'relative', zIndex: 10}}>
+                            {/* BRAND */}
+                            <div className="flex items-center gap-3">
+                                <div style={{
+                                    width:40, height:40, background:'linear-gradient(135deg, hsl(var(--hue1) 60% 60%), hsl(var(--hue2) 60% 60%))',
+                                    borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center',
+                                    color:'#fff', fontWeight:'bold', boxShadow:'0 0 15px hsl(var(--hue1) 50% 50% / 0.5)'
+                                }}>S</div>
+                                <div>
+                                    <h1 style={{fontSize:18, margin:0, color:'white', fontWeight:600}}>Semantic Surfer</h1>
+                                    <div style={{display:'flex', gap:8, fontSize:10, color:'hsl(var(--hue2) 30% 60%)', marginTop:4}}>
+                                        <span style={{color: isConnected ? '#4ade80' : '#f87171'}}>● SYSTEM</span>
+                                        <span style={{color: '#4ade80'}}>● CLOUD</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="flex items-center space-x-6" style={{ WebkitAppRegion: "no-drag" }}>
-                                {/* WPM Indicator */}
-                                <div className="flex flex-col items-end">
-                                    <span className="text-xs text-white/50 uppercase tracking-wider">Pace</span>
-                                    <span className="text-sm font-mono font-bold text-red-400">{session.wpm ? Math.round(session.wpm) : '--'} <span className="text-xs text-white/30">WPM</span></span>
+                            {/* CONTROLS */}
+                            <div className="flex items-center gap-4 app-no-drag">
+                                
+                                {/* STUDENT SELECT */}
+                                <div style={{position:'relative', width:220}}>
+                                    <select 
+                                        className="glass-input" 
+                                        value={selectedStudent}
+                                        onChange={e => setSelectedStudent(e.target.value)}
+                                        style={{cursor:'pointer'}}
+                                    >
+                                        <option value="">Select Student...</option>
+                                        {students.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <div style={{position:'absolute', right:16, top:16, pointerEvents:'none', color:'white', opacity:0.5}}>▼</div>
                                 </div>
 
-                                {/* Student Selector */}
-                                <GlassDropdown
-                                    options={[{value: 'New Student', label: '+ New Student'}, ...students]}
-                                    value={session.student_name}
-                                    onChange={handleStudentChange}
-                                    placeholder="Select Student"
-                                />
-                                
-                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/60 hover:text-white" title="Settings">
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </button>
-
-                                {/* End Session Button (New) */}
-                                <button
-                                    onClick={() => {
-                                        if (ws) ws.send(JSON.stringify({ message_type: "end_session" }));
-                                        alert("Session Ended and Saved.");
-                                    }}
-                                    className="px-4 py-1.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 rounded text-xs font-bold text-red-200 tracking-wider transition-colors"
+                                {/* TOGGLE BUTTON (Replaces Clay Toggle) */}
+                                <button 
+                                    className={`glass-btn ${isSessionActive ? 'active' : ''}`}
+                                    onClick={toggleSession}
+                                    style={{minWidth: 140, justifyContent:'space-between'}}
                                 >
-                                    END SESSION
+                                    <span>{isSessionActive ? 'ON AIR' : 'OFF AIR'}</span>
+                                    <div style={{
+                                        width:8, height:8, borderRadius:'50%', 
+                                        background: isSessionActive ? 'white' : 'rgba(255,255,255,0.2)',
+                                        boxShadow: isSessionActive ? '0 0 10px white' : 'none'
+                                    }}></div>
                                 </button>
-                            </div>
-                        </header>
 
-                        {/* Transcript Content */}
-                        <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                            <AnimatePresence>
-                                {session.turns.map((turn, idx) => (
-                                    <TranscriptRow key={idx} turn={turn} onWordClick={handleWordClick} onLineClick={handleLineClick} />
-                                ))}
-                            </AnimatePresence>
-                            <div ref={transcriptEndRef} />
+                                {/* WPM */}
+                                <div className="glass-btn" style={{width: 80, cursor:'default'}}>
+                                    {wpm} <small style={{opacity:0.5, marginLeft:4}}>WPM</small>
+                                </div>
+
+                                {/* PIN */}
+                                <button 
+                                    className={`glass-btn ${isPinned ? 'active' : ''}`} 
+                                    onClick={togglePin}
+                                    style={{width: 48, padding:0}}
+                                    title="Always on Top"
+                                >
+                                    📌
+                                </button>
+                                
+                                {/* COMMIT/SEND */}
+                                <button className="glass-btn" style={{width: 48, padding:0}}>➤</button>
+                            </div>
                         </div>
                     </div>
 
-                    {/* RIGHT: Marked Notes (Click-to-Mark) */}
-                    <div className="w-80 border-l border-white/20 bg-black/40 backdrop-blur-xl flex flex-col z-20 shadow-2xl">
-                        <div className="p-4 border-b border-white/10 bg-red-900/10">
-                            <h2 className="text-xs font-bold uppercase tracking-widest text-red-400">Marked Notes</h2>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {markedNotes.length === 0 && (
-                                <p className="text-white/30 text-sm text-center italic mt-10">Click words in the transcript to add them here.</p>
+                    {/* TRANSCRIPT AREA */}
+                    <div className="glass-card transcript-area">
+                         <div className="shine" style={{opacity:0.3}}></div>
+                         <div style={{position:'relative', zIndex:10, padding: 10}}>
+                            {transcript.length === 0 && (
+                                <div style={{textAlign:'center', padding:40, opacity:0.3, fontStyle:'italic'}}>
+                                    Ready to receive audio stream...
+                                </div>
                             )}
-                            <div className="flex flex-wrap gap-2 content-start">
-                                <AnimatePresence>
-                                    {markedNotes.map((note) => (
-                                        <motion.div
-                                            key={note.id}
-                                            initial={{ opacity: 0, scale: 0.8 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            exit={{ opacity: 0, scale: 0.5 }}
-                                            layout
-                                            className="glass-panel px-3 py-1 rounded-full border border-red-500/30 bg-red-900/20 flex items-center gap-2 group cursor-default"
-                                        >
-                                            <span className="text-sm font-medium text-white">{note.text}</span>
-
-                                            {/* Delete Action */}
-                                            <button
-                                                onClick={() => setMarkedNotes(prev => prev.filter(n => n.id !== note.id))}
-                                                className="text-white/40 hover:text-red-400 transition-colors"
-                                            >
-                                                ×
-                                            </button>
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            </div>
-                        </div>
-
-                        {/* Text Area for General Notes */}
-                        <div className="p-4 border-t border-white/10 bg-black/20">
-                            <textarea
-                                className="w-full h-32 bg-transparent text-sm text-white/80 placeholder-white/30 resize-none focus:outline-none"
-                                placeholder="General session notes..."
-                                value={session.notes}
-                                onChange={(e) => {
-                                    setSession(prev => ({...prev, notes: e.target.value}));
-                                    if (ws) ws.send(JSON.stringify({ message_type: "update_notes", notes: e.target.value }));
-                                }}
-                            />
-                        </div>
+                            {transcript.map((turn, i) => (
+                                <div key={i} className="transcript-bubble">
+                                    <div className="speaker">{turn.speaker}</div>
+                                    <div className={`text-content ${turn.isPartial ? 'partial' : ''}`}>
+                                        {turn.text}
+                                    </div>
+                                </div>
+                            ))}
+                            <div ref={transcriptEndRef} />
+                         </div>
                     </div>
 
                 </div>
             );
-        };
+        }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);

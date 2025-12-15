@@ -14,7 +14,7 @@
   "analysis_settings": {
     "low_confidence_threshold": 0.5,
     "end_of_turn_confidence_threshold": 0.7,
-    "min_end_of_turn_silence_when_confident": 160,
+    "min_end_of_turn_silence_when_confident": 120,
     "max_turn_silence": 2400
   },
   "auto_analysis": {
@@ -23,6 +23,6 @@
     "auto_export_student": false,
     "student_export_format": "markdown"
   },
-  "app_name": "Semantic Surfer",
+  "app_name": "Semantic Server",
   "student_name": "Unknown"
 }

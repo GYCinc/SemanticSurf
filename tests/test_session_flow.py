@@ -186,7 +186,8 @@ class TestIntraSession(unittest.TestCase):
         self.assertEqual(len(main.current_session["turns"]), 1)
         turn = main.current_session["turns"][0]
         self.assertEqual(turn["transcript"], "Hello world")
-        self.assertEqual(turn["speaker"], "Student A")
+        # Updated expectation: Backend stores raw 'Speaker B', frontend maps to Student Name
+        self.assertEqual(turn["speaker"], "Speaker B")
         self.assertEqual(turn["analysis"]["word_count"], 2)
         # Pause duration: 600 - 500 = 100
         self.assertEqual(turn["analysis"]["total_pause_time_ms"], 100)
@@ -228,12 +229,12 @@ class TestIntraSessionAsync(unittest.IsolatedAsyncioTestCase):
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        # Mock tool call response
+        # Mock tool call response - uses camelCase aliases
         tool_call_args = {
-            "category": "Grammar",
+            "category": "Syntax",
             "suggestedCorrection": "Corrected text",
             "explanation": "Explanation",
-            "detected_trigger": None
+            "detectedTrigger": None
         }
 
         mock_response.json.return_value = {
@@ -274,7 +275,7 @@ class TestIntraSessionAsync(unittest.IsolatedAsyncioTestCase):
 
         result = await analyze_turn_with_llm("test text")
 
-        self.assertEqual(result["category"], "Flow")
+        self.assertEqual(result["category"], "Pragmatics")
 
 
 class TestPostSession(unittest.TestCase):

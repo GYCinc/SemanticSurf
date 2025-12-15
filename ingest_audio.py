@@ -25,7 +25,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 AAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 
 # GitEnglishHub Integration (The proper pipeline!)
-GITENGLISH_API_BASE = os.getenv("GITENGLISH_API_BASE", "https://www.gitenglish.com")
+GITENGLISH_API_BASE = os.getenv("GITENGLISH_API_BASE", "https://gitenglishhub-production.up.railway.app")
 MCP_SECRET = os.getenv("MCP_SECRET")
 
 if not AAI_API_KEY:

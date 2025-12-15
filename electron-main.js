@@ -13,23 +13,22 @@ const { sanityClient } = require("./sanityClient"); // Import Sanity Client
 const profilesPath = path.join(__dirname, "student_profiles.json");
 
 function createWindow() {
-  // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1000,
     height: 700,
     minWidth: 800,
     minHeight: 600,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#d1d9e6", // T-1000 Liquid Metal chrome
+    vibrancy: "under-window",
+    visualEffectState: "active",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false, // Prevent freezing in background
+      backgroundThrottling: false,
     },
-    frame: false,
-    resizable: true,
-    titleBarStyle: "hidden",
-    alwaysOnTop: true, // Keep the window always on top
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 14, y: 24 }, // Centered in header
   });
 
   // --- FIX: Content Security Policy (Allows connection to ws://localhost:8765 and external scripts) ---

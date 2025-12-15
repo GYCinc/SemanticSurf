@@ -13,7 +13,7 @@ from typing import Type
 import httpx # Added for LLM Gateway
 from assemblyai import Transcriber, TranscriptionConfig  # FIX: Added missing imports
 import assemblyai as aai
-from analyzers.material_agent import MaterialAgent
+from analyzers.live_feedback_agent import LiveFeedbackAgent
 import numpy as np
 import pyaudio
 import websockets
@@ -262,10 +262,10 @@ config = {}
 try:
     with open("config.json", "r") as f:
         config = json.load(f)
-    logger.info(f"Config loaded: Speaker={config.get('speaker_name', 'Unknown')}")
+    logger.info(f"Config loaded: Device={config.get('device_index', 'auto')}, Channels={config.get('channel_indices', 'all')}")
 except Exception as e:
     logger.warning(f"Could not load config.json: {e}")
-    config = {"speaker_name": "Speaker", "app_name": "Semantic Surfer"}
+    config = {"app_name": "Semantic Surfer"}
 
 # WebSocket server setup
 connected_clients = set()
@@ -286,12 +286,12 @@ current_session = {
 # -------------------------------------------------------------------------
 # LLM ANALYSIS (AssemblyAI Gateway)
 # -------------------------------------------------------------------------
-# Initialize MaterialAgent
-material_agent = MaterialAgent(api_key=api_key)
+# Initialize LiveFeedbackAgent
+live_feedback_agent = LiveFeedbackAgent(api_key=api_key)
 
 async def analyze_turn_with_llm(text, context=""):
-    """Analyze a student turn using the MaterialAgent"""
-    return await material_agent.analyze_turn(text, context)
+    """Analyze a student turn using the LiveFeedbackAgent"""
+    return await live_feedback_agent.analyze_turn(text, context)
 
 
 # -------------------------------------------------------------------------
@@ -418,19 +418,19 @@ def start_new_session(session_id, student_name=None):
     logger.info(f"Saving to: {current_session['file_path']}")
 
 
-def save_turn_to_session(event: TurnEvent):
-    """Save complete turn data with all metadata"""
-
-    words_data = []
-    pauses = []
-
-
 try:
     from textblob import TextBlob
     TEXTBLOB_AVAILABLE = True
 except ImportError:
     logger.warning("⚠️ textblob not available. POS tagging disabled.")
     TEXTBLOB_AVAILABLE = False
+
+
+def save_turn_to_session(event: TurnEvent):
+    """Save complete turn data with all metadata"""
+
+    words_data = []
+    pauses = []
 
     if hasattr(event, "words") and event.words:
         for i, word in enumerate(event.words):
@@ -887,7 +887,7 @@ from analyzers.session_analyzer import analyze_session_file
 # -------------------------------------------------------------------------
 # GITENGLISH HUB INTEGRATION (Petty Dantic API)
 # -------------------------------------------------------------------------
-GITENGLISH_API_BASE = os.getenv("GITENGLISH_API_BASE", "https://www.gitenglish.com")
+GITENGLISH_API_BASE = os.getenv("GITENGLISH_API_BASE", "https://gitenglishhub-production.up.railway.app")
 GITENGLISH_MCP_SECRET = os.getenv("MCP_SECRET")
 
 async def send_to_gitenglish(action: str, student_id: str, params: dict) -> dict:
@@ -971,7 +971,7 @@ async def perform_batch_diarization(audio_path, session_path):
     logger.info("🔄 Starting Post-Session Diarization...")
     try:
         transcriber = Transcriber()
-        config = TranscriptionConfig(
+        transcription_config = TranscriptionConfig(
             speaker_labels=True,  # KEEP TRUE - needed to separate tutor from student
             speakers_expected=2,
             punctuate=False,
@@ -979,7 +979,7 @@ async def perform_batch_diarization(audio_path, session_path):
             speech_model='slam-1'
         )
         
-        transcript = await transcriber.transcribe_async(audio_path, config)
+        transcript = await transcriber.transcribe_async(audio_path, transcription_config)
         
         if transcript.status == "error": # Use string "error" for status check
             logger.error(f"❌ Diarization failed: {transcript.error}")
@@ -1003,19 +1003,9 @@ async def perform_batch_diarization(audio_path, session_path):
         # OR better: Replace the text with the high-quality batch transcript?
         # NO, we want to keep the real-time analysis metadata.
         
-        # Map speakers: Default A=Tutor (Aaron), B=Student
-        # This is crucial for the Corpus Filter to work later.
-        tutor_name = config.get("speaker_name", "Aaron")
-        student_name = session_data.get("student_name", "Student")
-        
+        # Keep speakers as raw A/B from AssemblyAI - name mapping happens at display time
         session_data["diarized_turns"] = []
-        for u in batch_utterances:
-            spk = u.speaker
-            if spk == "A":
-                spk = tutor_name
-            elif spk == "B":
-                spk = student_name
-            
+        for u in transcript.utterances:
             # Extract words with milliseconds for corpus
             words_list = []
             for w in u.words:
@@ -1028,7 +1018,7 @@ async def perform_batch_diarization(audio_path, session_path):
                 })
 
             session_data["diarized_turns"].append({
-                "speaker": spk,
+                "speaker": u.speaker,
                 "text": u.text,
                 "start": u.start,
                 "end": u.end,
@@ -1809,7 +1799,7 @@ if __name__ == "__main__":
     logger.info("=" * 60)
     logger.info(f"✓ API Key: {'Loaded' if api_key else 'MISSING'}")
     logger.info(
-        f"✓ Config: Speaker={config.get('speaker_name', 'Unknown')}, Device={config.get('device_index', 'Unknown')}"
+        f"✓ Config: Device={config.get('device_index', 'auto')}, Channels={config.get('channel_indices', 'all')}"
     )
     logger.info(f"✓ Python Version: {sys.version}")
     logger.info(f"✓ Working Directory: {os.getcwd()}")
