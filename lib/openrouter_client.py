@@ -35,11 +35,11 @@ except ImportError:
 
 # Default models for different use cases
 MODELS = {
-    "fast": "openai/gpt-4o-mini",           # Fast, cheap, good for simple tasks
-    "smart": "anthropic/claude-3.5-sonnet", # Best quality reasoning
-    "code": "anthropic/claude-3.5-sonnet",  # Best for code generation
-    "cheap": "google/gemini-2.0-flash-001", # Very cheap, good quality
-    "analysis": "google/gemini-2.5-pro-preview-06-05",  # Long context analysis
+    "fast": "mistralai/mistral-medium-3",       # Fast, good for simple tasks
+    "smart": "anthropic/claude-sonnet-4",       # Best quality reasoning
+    "code": "deepseek/deepseek-chat-v3-0324:especiale", # Best for code generation
+    "cheap": "moonshotai/kimi-k2-instruct",     # Very cheap, thinking model
+    "analysis": "google/gemini-3-pro-preview",  # Long context analysis
 }
 
 DEFAULT_MODEL = MODELS["smart"]
