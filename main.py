@@ -8,12 +8,12 @@ import wave # Added by user
 import time # Added by user
 from datetime import datetime
 from pathlib import Path
-from typing import Type
+from typing import Any
 
 import httpx # Added for LLM Gateway
-from assemblyai import Transcriber, TranscriptionConfig  # FIX: Added missing imports
+from ingest_audio import perform_batch_diarization
 import assemblyai as aai
-from analyzers.live_feedback_agent import LiveFeedbackAgent
+from analyzers.live_feedback_agent import LiveFeedbackAgent  # noqa: E402
 import numpy as np
 import pyaudio
 import websockets
@@ -24,7 +24,6 @@ from assemblyai.streaming.v3 import (
     StreamingError,
     StreamingEvents,
     StreamingParameters,
-    StreamingSessionParameters,
     TerminationEvent,
     TurnEvent,
 )
@@ -33,17 +32,16 @@ from dotenv import load_dotenv
 # Optional memory monitoring
 try:
     import psutil
-
-    PSUTIL_AVAILABLE = True
+    psutil_available = True
 except ImportError:
-    PSUTIL_AVAILABLE = False
+    psutil_available = False
+    psutil = None  # type: ignore
     print("⚠️ psutil not available - memory monitoring disabled")
 
 import atexit
 import gc
 import sys
 import threading
-import time
 
 load_dotenv()
 api_key = os.getenv("ASSEMBLYAI_API_KEY")
@@ -56,20 +54,22 @@ logger.info(f"API Key loaded: {'Yes' if api_key else 'No'}")
 # -------------------------------------------------------------------------
 # SUPABASE SETUP
 # -------------------------------------------------------------------------
+supabase_available = False
+supabase: Any = None
+
 try:
-    from supabase import create_client, Client
-    SUPABASE_AVAILABLE = True
+    from supabase import create_client
+    supabase_available = True
 except ImportError:
-    SUPABASE_AVAILABLE = False
-    Client = object  # Mock class to avoid NameError
+    create_client = None  # type: ignore
+    Client = None  # type: ignore
     print("⚠️ supabase package not installed. Run: pip install supabase")
 
 # Initialize Supabase Client
-supabase: Client = None
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_KEY")
 
-if SUPABASE_AVAILABLE and supabase_url and supabase_key:
+if supabase_available and supabase_url and supabase_key and create_client is not None:
     try:
         supabase = create_client(supabase_url, supabase_key)
         logger.info("✅ Supabase client initialized")
@@ -163,7 +163,7 @@ def diff_transcripts(raw_turns: list, diarized_turns: list, student_name: str) -
 # -------------------------------------------------------------------------
 def monitor_memory():
     """Monitor memory usage and shutdown if threshold exceeded"""
-    if not PSUTIL_AVAILABLE:
+    if not psutil_available or psutil is None:
         logger.warning("⚠️ psutil not available - memory monitoring disabled")
         return
 
@@ -214,10 +214,12 @@ def validate_audio_device(device_index):
 
             for i in range(device_count):
                 info = p.get_device_info_by_index(i)
-                if info["maxInputChannels"] > 0:
-                    marker = " ← RECOMMENDED" if "Aggregate" in info["name"] else ""
+                max_channels = int(info["maxInputChannels"])  # type: ignore
+                device_name = str(info["name"])
+                if max_channels > 0:
+                    marker = " ← RECOMMENDED" if "Aggregate" in device_name else ""
                     print(
-                        f"{i:<8} {info['name']:<45} {info['maxInputChannels']:<10}{marker}"
+                        f"{i:<8} {device_name:<45} {max_channels:<10}{marker}"
                     )
 
             print("\n💡 Fix: Update config.json with a valid device_index")
@@ -238,10 +240,12 @@ def validate_audio_device(device_index):
 
             for i in range(device_count):
                 info = p.get_device_info_by_index(i)
-                if info["maxInputChannels"] > 0:
-                    marker = " ← RECOMMENDED" if "Aggregate" in info["name"] else ""
+                max_channels = int(info["maxInputChannels"])  # type: ignore
+                device_name = str(info["name"])
+                if max_channels > 0:
+                    marker = " ← RECOMMENDED" if "Aggregate" in device_name else ""
                     print(
-                        f"{i:<8} {info['name']:<45} {info['maxInputChannels']:<10}{marker}"
+                        f"{i:<8} {device_name:<45} {max_channels:<10}{marker}"
                     )
 
             print("\n💡 Fix: Update config.json with a valid input device")
@@ -420,10 +424,11 @@ def start_new_session(session_id, student_name=None):
 
 try:
     from textblob import TextBlob
-    TEXTBLOB_AVAILABLE = True
+    textblob_available = True
 except ImportError:
     logger.warning("⚠️ textblob not available. POS tagging disabled.")
-    TEXTBLOB_AVAILABLE = False
+    textblob_available = False
+    TextBlob = None  # type: ignore
 
 
 def save_turn_to_session(event: TurnEvent):
@@ -478,7 +483,7 @@ def save_turn_to_session(event: TurnEvent):
         "turn_is_formatted": event.turn_is_formatted,
         "end_of_turn": event.end_of_turn,
         "end_of_turn_confidence": event.end_of_turn_confidence,
-        "created": event.created.isoformat() if hasattr(event, "created") else None,
+        "created": event.created.isoformat() if hasattr(event, "created") and event.created is not None else None,
         "words": words_data,
         "pauses": pauses,
         "analysis": {
@@ -503,15 +508,20 @@ def save_turn_to_session(event: TurnEvent):
         },
     }
 
+    turns_list = current_session["turns"]
+    if turns_list is None:
+        turns_list = []
+        current_session["turns"] = turns_list
+    
     existing_turn = next(
-        (t for t in current_session["turns"] if t["turn_order"] == event.turn_order),
+        (t for t in turns_list if t["turn_order"] == event.turn_order),
         None,
     )
 
     if existing_turn:
         existing_turn.update(turn_data)
     else:
-        current_session["turns"].append(turn_data)
+        turns_list.append(turn_data)
 
 
 def save_session_to_file():
@@ -734,7 +744,7 @@ async def websocket_handler(websocket):
                         "cpu_percent": 0,
                         "memory_usage": 0
                     }
-                    if PSUTIL_AVAILABLE:
+                    if psutil_available and psutil is not None:
                         health_data["cpu_percent"] = psutil.cpu_percent()
                         health_data["memory_usage"] = psutil.virtual_memory().percent
                     
@@ -880,7 +890,7 @@ def on_turn(self: type[StreamingClient], event: TurnEvent):
             logger.error(f"Error spawning Supabase thread: {e}")
 
 
-from analyzers.session_analyzer import analyze_session_file
+from analyzers.session_analyzer import analyze_session_file  # noqa: E402
 
 # ... (keep existing imports)
 
@@ -908,8 +918,8 @@ async def send_to_gitenglish(action: str, student_id: str, params: dict) -> dict
         return {"success": False, "error": "MCP_SECRET not configured"}
     
     url = f"{GITENGLISH_API_BASE}/api/mcp"
-    headers = {
-        "Authorization": f"Bearer {GITENGLISH_MCP_SECRET}",
+    headers: dict[str, str] = {
+        "Authorization": GITENGLISH_MCP_SECRET,
         "Content-Type": "application/json"
     }
     payload = {
@@ -959,109 +969,32 @@ def get_student_id(name):
         logger.error(f"Error finding student ID: {e}")
         return None
 
-async def perform_batch_diarization(audio_path, session_path):
-    """
-    Uploads audio to AssemblyAI Batch API for accurate diarization.
-    Updates the session JSON with speaker labels.
-    """
-    if not os.path.exists(audio_path):
-        logger.error(f"❌ Audio file not found: {audio_path}")
-        return False
 
-    logger.info("🔄 Starting Post-Session Diarization...")
-    try:
-        transcriber = Transcriber()
-        transcription_config = TranscriptionConfig(
-            speaker_labels=True,  # KEEP TRUE - needed to separate tutor from student
-            speakers_expected=2,
-            punctuate=False,
-            format_text=False,
-            speech_model='slam-1'
-        )
-        
-        transcript = await transcriber.transcribe_async(audio_path, transcription_config)
-        
-        if transcript.status == "error": # Use string "error" for status check
-            logger.error(f"❌ Diarization failed: {transcript.error}")
-            return False
-
-        # Map speakers
-        # We assume the speaker with the most speech is the Tutor (Aaron) if not explicitly identified
-        # But for now, let's just use the labels 'A', 'B' and try to map them to existing turns
-        
-        logger.info("✅ Diarization complete. Mapping speakers...")
-        
-        # Load current session data
-        with open(session_path, 'r') as f:
-            session_data = json.load(f)
-            
-        # Simple mapping strategy: 
-        # Iterate through batch utterances and match them to streaming turns based on timestamp
-        # This is complex because streaming timestamps might differ slightly.
-        # A simpler approach for this MVP:
-        # Just update the "speaker" field in the session_data based on the batch result order
-        # OR better: Replace the text with the high-quality batch transcript?
-        # NO, we want to keep the real-time analysis metadata.
-        
-        # Keep speakers as raw A/B from AssemblyAI - name mapping happens at display time
-        session_data["diarized_turns"] = []
-        for u in transcript.utterances:
-            # Extract words with milliseconds for corpus
-            words_list = []
-            for w in u.words:
-                words_list.append({
-                    "text": w.text,
-                    "start_ms": w.start,
-                    "end_ms": w.end,
-                    "confidence": w.confidence,
-                    "duration_ms": w.end - w.start
-                })
-
-            session_data["diarized_turns"].append({
-                "speaker": u.speaker,
-                "text": u.text,
-                "start": u.start,
-                "end": u.end,
-                "confidence": u.confidence,
-                "words": words_list
-            })
-        
-        # Update the main turns if possible, or just save this
-        with open(session_path, 'w') as f:
-            json.dump(session_data, f, indent=2)
-            
-        logger.info(f"✅ Session updated with diarized turns: {session_path}")
-        return True
-
-    except Exception as e:
-        logger.error(f"❌ Diarization error: {e}")
-        return False
-
-async def upload_analysis_to_supabase(session_path, duration_seconds, audio_path=None):
+async def upload_analysis_to_supabase(session_data):
     """Run analysis, build corpus, process notes, and upload to Supabase"""
     if not supabase:
         return
 
     try:
-        # 0. Run Batch Diarization if audio exists
-        if audio_path:
-            # SKIPPING BATCH for immediate availability as requested
-            # success = await perform_batch_diarization(audio_path, session_path)
-            # if not success:
-            logger.info("⚠️ Skipping Batch Diarization (Fast Mode Enabled)")
+        session_path = session_data.get("session_file_path")
+        audio_path = session_data.get("audio_path")
+        duration_seconds = session_data.get("duration_seconds")
 
         # --- DUPLICATE PREVENTION START ---
         logger.info("🛡️ Checking for existing session to prevent duplicates...")
         
         # 1. Calculate Hash
-        file_hash = calculate_file_hash(session_path)
+        if session_path:
+            file_hash = calculate_file_hash(session_path)
+        else:
+            file_hash = "manual_hash_" + datetime.now().isoformat()
         
         # 2. Get Basic Info for Fuzzy Match
-        with open(session_path, 'r') as f:
-            pre_load_data = json.load(f)
+        pre_student_name = session_data.get("student_name", "Student")
+        pre_start_time = session_data.get("date", datetime.now().isoformat())
         
-        pre_student_name = pre_load_data.get('student_name', 'Unknown')
-        pre_start_time = pre_load_data.get('start_time')
+        pre_student_name = session_data.get('student_name', 'Unknown')
+        pre_start_time = session_data.get('start_time')
         pre_student_id = get_student_id(pre_student_name)
 
         if pre_student_id:
@@ -1159,63 +1092,8 @@ async def upload_analysis_to_supabase(session_path, duration_seconds, audio_path
                 logger.error(f"❌ Failed to auto-create student: {e}")
                 return
 
-        # 4. BUILD CORPUS - Add student turns to student_corpus
-        logger.info("📚 Building corpus from student turns...")
-        
-        # Get raw and diarized turns for comparison
-        raw_turns = session_data.get('turns', [])
-        diarized_turns = session_data.get('diarized_turns', [])
-        
-        # Use diarized turns if available
-        turns_source = diarized_turns if diarized_turns else raw_turns
-        student_turns = [t for t in turns_source if t.get('speaker') != config.get('speaker_name', 'Aaron')]
-        
-        # Diff raw vs diarized to find corrections/errors
-        corrections = {}
-        if raw_turns and diarized_turns:
-            corrections = diff_transcripts(raw_turns, diarized_turns, student_name)
-        
-        # Get db_session_id from session_data or create one
-        db_session_id = session_data.get('db_session_id', session_data.get('session_id'))
-        
-        logger.info(f"🔍 Found {len(student_turns)} student turns, {len(corrections)} potential errors")
-        
-        # 5. BUILD WORD-LEVEL CORPUS - Extract individual words with error flags
-        logger.info("📖 Building word-level corpus...")
-        word_corpus_entries = []
-        
-        for turn_idx, turn in enumerate(student_turns):
-            words = turn.get('words', [])
-            for word_idx, word in enumerate(words):
-                # Check if this word was corrected (potential error)
-                is_error = (turn_idx, word_idx) in corrections
-                error_info = corrections.get((turn_idx, word_idx), {})
-                
-                word_entry = {
-                    "student_id": student_id,
-                    "session_id": str(db_session_id) if db_session_id else None,
-                    "word_text": word.get('text', ''),
-                    "source": "transcript",
-                    "word_start_ms": word.get('start_ms', word.get('start')),
-                    "word_end_ms": word.get('end_ms', word.get('end')),
-                    "word_duration_ms": word.get('duration_ms'),
-                    "word_confidence": word.get('confidence'),
-                    "is_error": is_error,
-                    "error_type": error_info.get('type') if is_error else None,
-                    "expected_form": error_info.get('raw') if is_error else None
-                }
-                word_corpus_entries.append(word_entry)
-        
-        if word_corpus_entries:
-            try:
-                # Insert in batches to avoid rate limits
-                batch_size = 100
-                for i in range(0, len(word_corpus_entries), batch_size):
-                    batch = word_corpus_entries[i:i + batch_size]
-                    supabase.table("student_corpus").insert(batch).execute()
-                logger.info(f"✅ Added {len(word_corpus_entries)} words to corpus ({len(corrections)} marked as errors)")
-            except Exception as e:
-                logger.warning(f"Failed to add word-level corpus entries: {e}")
+        # 4. CORPUS BUILDING DEFERRED (Inbox Workflow)
+        logger.info("📚 Corpus building deferred to GitEnglishHub Inbox. No direct writes performed.")
 
         # 5. PROCESS NOTES - Send through LLM for intent extraction
         notes_raw = session_data.get('notes', '')
@@ -1237,7 +1115,7 @@ Provide a structured JSON response with: teaching_moments, action_items, progres
                 
                 response = httpx.post(
                     "https://llm-gateway.assemblyai.com/v1/chat/completions",
-                    headers={"Authorization": api_key}, # Use api_key directly
+                    headers={"Authorization": str(api_key or "")},
                     json={
                         "model": "anthropic/claude-3-5-sonnet",
                         "messages": [{"role": "user", "content": prompt}],
@@ -1261,7 +1139,7 @@ Provide a structured JSON response with: teaching_moments, action_items, progres
         logger.info("🤖 Running LeMUR Analysis (Extracting Actionable Phenomena)...")
         lemur_response = "No analysis generated."
         try:
-            from analyzers.lemur_query import run_lemur_query
+            from analyzers.lemur_query import run_lemur_query  # noqa: E402
             
             # Save temp session file for LeMUR to read
             temp_session_path = Path(f"sessions/temp_{session_data['session_id']}.json")
@@ -1358,10 +1236,9 @@ Provide a structured JSON response with: teaching_moments, action_items, progres
             "metrics": {
                 **analysis.get('student_metrics', {}),
                 "notes": notes_analysis,
-                **analysis.get('student_metrics', {}),
-                "notes": notes_analysis,
                 "lemur_analysis": lemur_response,
-                "file_hash": file_hash # Add hash to metrics for future checks
+                "file_hash": file_hash,
+                "transcripts": turns_source # CRITICAL: Required for Inbox validation
             }
         }
         
@@ -1446,69 +1323,49 @@ def on_terminated(self: type[StreamingClient], event: TerminationEvent):
         # Load the session data we just saved
         with open(current_session["file_path"], 'r') as f:
             session_data = json.load(f)
-        
-        student_name = session_data.get('student_name', 'Unknown')
-        student_id = get_student_id(student_name)  # Get ID from local lookup
-        
-        if not student_id:
-            logger.warning(f"⚠️ Student '{student_name}' not found. Using name for lookup.")
-            student_id = student_name  # GitEnglishHub will resolve it
-        
-        # Prepare the analysis report from session data
-        student_turns = [t for t in session_data.get('turns', []) 
-                        if t.get('speaker') != config.get('speaker_name', 'Aaron')]
-        
-        # Build a simple transcript for analysis
-        transcript_text = "\n".join([
-            f"{t.get('speaker', 'Student')}: {t.get('transcript', '')}"
-            for t in session_data.get('turns', [])
-        ])
-        
-        # Calculate basic metrics
-        total_words = sum(len(t.get('words', [])) for t in student_turns)
-        wpms = [t.get('analysis', {}).get('speaking_rate_wpm') for t in student_turns]
-        wpms = [w for w in wpms if w is not None]
-        avg_wpm = round(sum(wpms) / len(wpms), 1) if wpms else 0
-        
-        # Send to GitEnglishHub's Petty Dantic API
-        def run_async_send():
-            try:
-                # 1. Create lesson analysis in Sanity
-                result = asyncio.run(send_to_gitenglish(
-                    action='sanity.createLessonAnalysis',
-                    student_id=student_id,
-                    params={
-                        'studentName': student_name,
-                        'sessionDate': session_data.get('start_time'),
-                        'analysisReport': f"Session completed. Duration: {event.audio_duration_seconds}s, Words: {total_words}, Avg WPM: {avg_wpm}\n\nTranscript:\n{transcript_text[:2000]}..."
-                    }
-                ))
-                
-                if result.get('success'):
-                    logger.info("✅ Session sent to GitEnglishHub successfully!")
-                    print("✅ Session data sent to GitEnglishHub!")
-                else:
-                    logger.error(f"❌ GitEnglishHub upload failed: {result.get('error')}")
-                    print(f"❌ Upload failed: {result.get('error')}")
-                    
-                # 2. Add student turns to corpus (optional - depends on your needs)
-                # This can be done later by GitEnglishHub when processing the session
-                
-            except Exception as e:
-                logger.error(f"❌ CRITICAL: Failed to send to GitEnglishHub: {e}", exc_info=True)
-                print(f"❌ CRITICAL: Session NOT uploaded! Error: {e}")
-        
-        # Run in thread but wait for completion
-        upload_thread = threading.Thread(target=run_async_send, daemon=False)
-        upload_thread.start()
-        upload_thread.join(timeout=60)
-        
-        if upload_thread.is_alive():
-            logger.warning("⚠️ Upload still running after 60s. Session may not be saved.")
             
+        # 1. Run Batch Diarization (The "Guru" Refinement)
+        if session_data.get("audio_path") and os.path.exists(session_data["audio_path"]):
+             logger.info("Running High-Definition Batch Diarization...")
+             try:
+                 # Call the imported function from ingest_audio
+                 # args: audio_path, student_name
+                 # returns: all_turns, duration
+                 
+                 student_name = session_data.get("student_name", "Student")
+                 all_turns, duration = asyncio.run(perform_batch_diarization(
+                     session_data["audio_path"], 
+                     student_name
+                 ))
+                 
+                 if all_turns:
+                     logger.info(f"✅ Batch Diarization Success! {len(all_turns)} turns replaced streaming data.")
+                     session_data["turns"] = all_turns
+                     session_data["diarized"] = True
+                     # Update duration if refined
+                     if duration:
+                         session_data["duration_seconds"] = duration
+                         
+                     # SAVE the improved data back to disk
+                     with open(current_session["file_path"], 'w') as f:
+                         json.dump(session_data, f, indent=2)
+                 else:
+                     logger.warning("⚠️ Batch Diarization returned no turns. Keeping streaming transcript.")
+                     
+             except Exception as e:
+                 logger.error(f"❌ Batch Diarization failed: {e}")
+
+        # 2. Upload to GitEnglishHub (Analysis & Storage)
+        # We reuse the robust logic in upload_analysis_to_supabase which handles LeMUR + API
+        # Ensure session_data has the file path for reference
+        session_data["session_file_path"] = current_session["file_path"]
+        
+        asyncio.run(upload_analysis_to_supabase(session_data))
+        
     except Exception as e:
-        logger.error(f"❌ Error preparing session data: {e}", exc_info=True)
-        print(f"❌ Failed to prepare session for upload: {e}")
+        logger.error(f"❌ Failed to process/send session: {e}")
+
+    # (Removed old manual sending logic)
 
     print_session_summary()
 
@@ -1640,12 +1497,23 @@ class MonoMicrophoneStream:
             selected_channels = audio_data[:, self.channel_indices]
             audio_data = selected_channels.mean(axis=1).astype(np.int16)
 
-        return audio_data.tobytes()
+        mono_bytes = audio_data.tobytes()
+        
+        # CRITICAL: Save audio to disk for batch diarization
+        if self.wave_file:
+            self.wave_file.writeframes(mono_bytes)
+        
+        return mono_bytes
+
 
     def close(self):
         self.stream.stop_stream()
         self.stream.close()
         self.p.terminate()
+        # CRITICAL: Close wave file so audio is properly saved
+        if self.wave_file:
+            self.wave_file.close()
+            logger.info(f"✅ Audio saved to: {self.audio_path}")
 
 
 # -------------------------------------------------------------------------
@@ -1666,20 +1534,9 @@ def run_streaming_client():
     client.connect(
         StreamingParameters(
             sample_rate=16000,
-            audio_encoding="pcm_s16le",
-            # Raw text configuration
-            punctuate=False, # DISABLED for ESL accuracy
-            format_text=False, # DISABLED for ESL accuracy
-            # speaker_labels=True, # REMOVED: Ignored in v3 streaming
-            # OPTIMIZATION: We now use post-session batch diarization for accurate speaker labeling
-            # This improves diarization accuracy significantly for 1-on-1 sessions.
-            # Note: Streaming API uses 'speakers_expected' or similar if available, 
-            # but currently v3 streaming setup typically relies on 'speaker_labels=True'.
-            # We will check if 'speakers_expected' is a valid param for StreamingParameters.
-            # If not, we rely on the improved model. 
-            # The docs mention 'speakers_expected' for TranscriptionConfig (batch), 
-            # but for Streaming, it's often auto-detected.
-            # However, we can enforce conservative confidence thresholds.
+            # Note: v3 Streaming API has different parameters than batch API
+            # - No punctuate/format_text in v3 streaming
+            # - Post-session batch diarization handles speaker labeling
             
             # CONSERVATIVE TURN DETECTION SETTINGS
             end_of_turn_confidence_threshold=0.7,
@@ -1702,7 +1559,7 @@ def run_streaming_client():
              try:
                  mono_stream = MonoMicrophoneStream(
                     sample_rate=16000,
-                    device_index=device_index,
+                    device_index=int(device_index),
                     channel_indices=channel_indices,
                  )
              except Exception as e:
@@ -1720,13 +1577,16 @@ def run_streaming_client():
 
                 mono_stream = MonoMicrophoneStream(
                     sample_rate=16000,
-                    device_index=default_index,
+                    device_index=int(default_index),
                     channel_indices=None # Reset channels for default
                 )
             finally:
                 p.terminate()
 
-        client.stream(mono_stream)
+        if mono_stream is not None:
+            client.stream(mono_stream)
+        else:
+            logger.error("❌ No audio stream available")
 
     except Exception as e:
         logger.error(f"❌ CRITICAL AUDIO ERROR: {e}")
@@ -1753,7 +1613,7 @@ async def main():
     logger.info("WebSocket server started on ws://localhost:8765")
 
     # --- Auto-Sync Students from Cloud ---
-    if SUPABASE_AVAILABLE and supabase:
+    if supabase_available and supabase:
         try:
             logger.info("☁️ Syncing students from Supabase...")
             # Just call get_existing_students to sync - it already handles everything

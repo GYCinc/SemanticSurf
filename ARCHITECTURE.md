@@ -17,7 +17,7 @@ Semantic Surfer is a desktop application for real-time ESL tutoring. It captures
 ├─────────────────────────────────────────────────────────────────────┤
 │ 1. Audio captured (mic or pre-recorded file)                        │
 │ 2. AssemblyAI transcribes with speaker diarization                  │
-│ 3. LeMUR analyzes linguistic phenomena                              │
+│ 3. LLM Gateway (Claude/Gemini) analyzes linguistic phenomena        │
 │ 4. Results → Petty Dantic API (GitEnglishHub)                       │
 └───────────────────────────┬─────────────────────────────────────────┘
                             │
@@ -27,8 +27,8 @@ Semantic Surfer is a desktop application for real-time ESL tutoring. It captures
 │             https://www.gitenglish.com                               │
 ├─────────────────────────────────────────────────────────────────────┤
 │ POST /api/mcp  →  Petty Dantic Action Registry                      │
-│ - ingest.createSession → student_sessions table                     │
-│ - schema.addToCorpus → student_corpus table                         │
+│ - ingest.createSession → student_sessions table (STAGING)           │
+│ - corpus.validateAndStore → student_corpus table (APPROVED ONLY)    │
 │ - sanity.createLessonAnalysis → Sanity CMS                          │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -49,6 +49,18 @@ Real-time tutoring sessions with live transcription.
 - Shows live transcript in Electron UI
 - On session end → sends to GitEnglishHub
 
+**CRITICAL: Session Lifecycle Requirements**
+
+1. **Session MUST be properly ended** via the "END SESSION" button in the UI
+2. If session is not properly ended:
+   - Audio file will be 0 bytes (wave file never closed)
+   - Batch diarization cannot run (requires audio file)
+   - Speaker identification will not occur
+   - `diarized_turns` will be empty
+   - Data cannot flow to GitEnglishHub corpus
+3. The `MonoMicrophoneStream.close()` method closes the wave file
+4. The `on_terminated` callback runs batch diarization and uploads to GitEnglishHub
+
 ### Method 2: Pre-Recorded Script (`ingest_audio.py`)
 
 Batch processing for recorded lessons.
@@ -58,8 +70,8 @@ python ingest_audio.py
 ```
 
 - Dual-pass transcription (raw + diarized)
-- LeMUR analysis extracts linguistic phenomena
-- Creates session + populates corpus via API
+- LLM Gateway analysis extracts linguistic phenomena
+- Creates session and stages for Inbox approval
 
 ### Method 3: Web UI (GitEnglishHub)
 
@@ -91,8 +103,8 @@ Upload directly from browser without running Semantic Surfer.
 ### Pre-Recorded Ingestion (`ingest_audio.py`)
 
 - Dual-pass: Raw (no punctuation) + Diarized (speaker labels)
-- LeMUR analysis with linguistic prompt
-- Batch corpus upload to GitEnglishHub
+- LLM Gateway analysis with linguistic prompt (Claude Sonnet 4.5)
+- Stages sessions for teacher approval in GitEnglishHub Inbox
 
 ---
 
@@ -136,9 +148,44 @@ Contains:
 
 ---
 
-## LeMUR Analysis
+## NLP Analysis: LLM Gateway (Migrated from LeMUR)
 
-The `ingest_audio.py` script uses a detailed linguistic prompt to extract:
+**IMPORTANT: LeMUR ≠ LLM Gateway**
+
+Although both are AssemblyAI products for AI analysis, they are **fundamentally different systems**:
+
+### LeMUR (Legacy)
+
+- **SDK-based**: Uses `assemblyai` Python SDK (`aai.Lemur().task()`)
+- **Limited models**: Restricted to models in the SDK's enum (Anthropic, Mistral only in v0.48.1)
+- **Automatic transcript fetch**: Automatically retrieves transcript via transcript ID
+- **Simple response**: Returns `.response` attribute with analysis text
+- **Model names**: Enum-based (e.g., `aai.LemurModel.claude_sonnet`)
+
+### LLM Gateway (Current)
+
+- **HTTP-based**: Direct POST to `https://llm-gateway.assemblyai.com/v1/chat/completions`
+- **Broader model support**: Claude, GPT, **and Gemini models** (not available in LeMUR SDK)
+- **Manual transcript inclusion**: Must include transcript text in request payload
+- **OpenAI-compatible format**: Returns standard chat completion response
+- **Model names**: String-based (e.g., `"claude-sonnet-4-5-20250929"`, `"gemini-3-pro-preview"`)
+
+### Why We Migrated
+
+1. **Model Access**: LeMUR SDK v0.48.1 doesn't recognize newer models like Gemini 3.0
+2. **Future-Proofing**: LLM Gateway is the modern API with ongoing model additions
+3. **Flexibility**: Direct HTTP calls allow custom request handling
+
+### Current Configuration
+
+**File**: `ingest_audio.py` (as of Dec 2025)
+**Model**: Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
+**Endpoint**: `https://llm-gateway.assemblyai.com/v1/chat/completions`
+**Max Tokens**: 8000
+
+### Analysis Output
+
+The LLM Gateway analyzes transcripts for:
 
 1. **Annotated Errors** - Quote, correction, category, explanation
 2. **Student Profile** - CEFR estimate, dominant issue
@@ -228,7 +275,10 @@ For keyboard controls during live sessions:
 
 # Session Analysis Pipeline
 
-> **Last Updated:** 2025-12-15
+> **See `gitenglishhub/ARCHITECTURE.md` for the Master Definition of the Pipeline.**
+
+> **Last Updated:** 2025-12-16
+> **Status:** STRICT ALIGNMENT with GitEnglishHub
 
 ## What Gets Analyzed
 
