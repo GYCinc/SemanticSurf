@@ -16,8 +16,8 @@ class PhenomenaPatternMatcher:
         Load the phenomena corpus from JSON.
         """
         if corpus_path is None:
-            # Default path to the unified phenomena corpus
-            corpus_path = str(Path(__file__).parent.parent.parent / "gitenglishhub" / "ErrorCorp" / "unified_phenomena.json")
+            # Default path to the local phenomena corpus
+            corpus_path = str(Path(__file__).parent.parent / "data" / "unified_phenomena.json")
         
         self.phenomena: list[dict] = []
         self.patterns: list[tuple[re.Pattern, dict]] = []
