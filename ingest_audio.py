@@ -174,111 +174,110 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
     from analyzers.pos_analyzer import POSAnalyzer
     from analyzers.ngram_analyzer import NgramAnalyzer
     from analyzers.verb_analyzer import VerbAnalyzer
-        from analyzers.article_analyzer import ArticleAnalyzer
-        from analyzers.amalgum_analyzer import AmalgumAnalyzer
-        from analyzers.comparative_analyzer import ComparativeAnalyzer
-        from analyzers.phenomena_matcher import PhenomenaPatternMatcher
-        from analyzers.preposition_analyzer import PrepositionAnalyzer
-        from analyzers.learner_error_analyzer import LearnerErrorAnalyzer
-    
-        # Construct unified JSON for analyzers
-        session_json = {
-            "session_id": str(uuid.uuid4()),
-            "student_name": student_name,
-            "teacher_name": "Aaron",
-            "speaker_map": {"A": "Aaron", "B": student_name}, # Heuristic
-            "start_time": datetime.now().isoformat(),
-            "turns": all_turns,
-            "notes": notes
-        }
-    
-        main_analyzer = SessionAnalyzer(session_json)
-        basic_metrics = main_analyzer.analyze_all()
-        student_text = main_analyzer.student_full_text
-        tutor_text = main_analyzer.teacher_full_text
+            from analyzers.article_analyzer import ArticleAnalyzer
+            from analyzers.amalgum_analyzer import AmalgumAnalyzer
+            from analyzers.comparative_analyzer import ComparativeAnalyzer
+            from analyzers.phenomena_matcher import ErrorPhenomenonMatcher
+            from analyzers.preposition_analyzer import PrepositionAnalyzer
+            from analyzers.learner_error_analyzer import LearnerErrorAnalyzer
         
-        logger.info("🧠 Running Tiered Analysis Suite...")
-        pos_counts = POSAnalyzer().analyze(student_text)
-        pos_ratios = POSAnalyzer().get_ratios(student_text)
-        ngram_data = NgramAnalyzer().analyze(student_text)
-        verb_data = VerbAnalyzer().analyze(student_text)
-        article_data = ArticleAnalyzer().analyze(student_text)
-        prep_data = PrepositionAnalyzer().analyze(student_text)
-        learner_data = LearnerErrorAnalyzer().analyze(student_text)
+            # Construct unified JSON for analyzers
+            session_json = {
+                "session_id": str(uuid.uuid4()),
+                "student_name": student_name,
+                "teacher_name": "Aaron",
+                "speaker_map": {"A": "Aaron", "B": student_name}, # Heuristic
+                "start_time": datetime.now().isoformat(),
+                "turns": all_turns,
+                "notes": notes
+            }
         
-        comp_data = ComparativeAnalyzer().compare(
-            student_data={"pos": pos_counts, "ngrams": ngram_data, "text": student_text},
-            tutor_data={"pos": POSAnalyzer().analyze(tutor_text), "ngrams": NgramAnalyzer().analyze(tutor_text), "text": tutor_text}
-        )
+            main_analyzer = SessionAnalyzer(session_json)
+            basic_metrics = main_analyzer.analyze_all()
+            student_text = main_analyzer.student_full_text
+            tutor_text = main_analyzer.teacher_full_text
+            
+            logger.info("🧠 Running Tiered Analysis Suite...")
+            pos_counts = POSAnalyzer().analyze(student_text)
+            pos_ratios = POSAnalyzer().get_ratios(student_text)
+            ngram_data = NgramAnalyzer().analyze(student_text)
+            verb_data = VerbAnalyzer().analyze(student_text)
+            article_data = ArticleAnalyzer().analyze(student_text)
+            prep_data = PrepositionAnalyzer().analyze(student_text)
+            learner_data = LearnerErrorAnalyzer().analyze(student_text)
+            
+            comp_data = ComparativeAnalyzer().compare(
+                student_data={"pos": pos_counts, "ngrams": ngram_data, "text": student_text},
+                tutor_data={"pos": POSAnalyzer().analyze(tutor_text), "ngrams": NgramAnalyzer().analyze(tutor_text), "text": tutor_text}
+            )
+            
+            detected_errors = []
+            # Standardize Article Errors (List)
+            if isinstance(article_data, list):
+                detected_errors.extend([{'error_type': 'Article Error', 'text': e['match']} for e in article_data])
+            
+            # Standardize Verb Errors
+            verb_errs = verb_data.get('irregular_errors', [])
+            detected_errors.extend([{'error_type': 'Verb Error', 'text': e['verb']} for e in verb_errs])
         
-        detected_errors = []
-        # Standardize Article Errors (List)
-        if isinstance(article_data, list):
-            detected_errors.extend([{'error_type': 'Article Error', 'text': e['match']} for e in article_data])
+            # Standardize Preposition Errors
+            detected_errors.extend([{'error_type': 'Preposition Error', 'text': e['item']} for e in prep_data])
         
-        # Standardize Verb Errors
-        verb_errs = verb_data.get('irregular_errors', [])
-        detected_errors.extend([{'error_type': 'Verb Error', 'text': e['verb']} for e in verb_errs])
-    
-        # Standardize Preposition Errors
-        detected_errors.extend([{'error_type': 'Preposition Error', 'text': e['item']} for e in prep_data])
-    
-        # Standardize Learner Errors (PELIC)
-        detected_errors.extend([{'error_type': f"Learner: {e.get('category')}", 'text': e['item']} for e in learner_data])
+            # Standardize Learner Errors (PELIC)
+            detected_errors.extend([{'error_type': f"Learner: {e.get('category')}", 'text': e['item']} for e in learner_data])
+            
+            # Pattern Matching
+            try:
+                pattern_matches = ErrorPhenomenonMatcher().match(student_text)
+                for m in pattern_matches:
+                    detected_errors.append({'error_type': f"Pattern: {m.get('category')}", 'text': m.get('item')})
+            except: pass
         
-        # Pattern Matching
-        try:
-            pattern_matches = PhenomenaPatternMatcher().match(student_text)
-            for m in pattern_matches:
-                detected_errors.append({'error_type': f"Pattern: {m.get('category')}", 'text': m.get('item')})
-        except: pass
-    
-        analysis_context = {
-            "caf_metrics": basic_metrics.get('caf_metrics') or "DATA_MISSING",
-            "comparison": comp_data,
-            "register_analysis": {"scores": AmalgumAnalyzer().analyze_register(student_text), "classification": AmalgumAnalyzer().get_genre_classification(student_text)},
-            "detected_errors": detected_errors,
-            "pos_summary": pos_ratios
-        }
-
-    # 3. LLM Gateway Synthesis (Claude 4.5 for Batch)
-    from analyzers.lemur_query import run_lemur_query
-    # Create temp file for lemur_query
-    temp_path = Path(f"batch_staging_{uuid.uuid4().hex}.json")
-    with open(temp_path, 'w') as f: json.dump(session_json, f)
-    
-    # Run analysis (Note: lemur_query is currently set to gemini-1.5-pro, 
-    # but we can override model here if we want maximum depth)
-    analysis_results = run_lemur_query(temp_path, analysis_context=analysis_context)
-    if temp_path.exists(): temp_path.unlink()
-
-    lemur_data = analysis_results.get('lemur_analysis', {})
-    
-    # 4. Final Handoff to Hub API
-    extracted_phenomena = []
-    for err in lemur_data.get('annotated_errors', []):
-        extracted_phenomena.append({
-            "item": err.get('quote'),
-            "correction": err.get('correction'),
-            "category": err.get('linguistic_category', 'Syntax'),
-            "explanation": err.get('explanation'),
-            "source": "LLM_ANALYSIS"
-        })
-    for err in detected_errors:
-         extracted_phenomena.append({"item": err.get('text'), "category": "Grammar", "explanation": f"Detected {err.get('error_type')}", "source": "RULE_BASED"})
-
-    params = {
-        'turns': [{"speaker": t.get("speaker"), "transcript": t.get("transcript")} for t in all_turns],
-        'transcriptText': "\n".join([f"{t['speaker']}: {t['transcript']}" for t in all_turns]),
-        'sessionDate': session_json['start_time'],
-        'duration': duration,
-        'lemurAnalysis': lemur_data.get('response', 'No reasoning provided.'),
-        'extractedPhenomena': extracted_phenomena,
-        'studentProfile': lemur_data.get('student_profile', {}),
-        'notes': notes,
-        'fileHash': calculate_file_hash(audio_path)
-    }
-
+            analysis_context = {
+                "caf_metrics": basic_metrics.get('caf_metrics') or "DATA_MISSING",
+                "comparison": comp_data,
+                "register_analysis": {"scores": AmalgumAnalyzer().analyze_register(student_text), "classification": AmalgumAnalyzer().get_genre_classification(student_text)},
+                "detected_errors": detected_errors,
+                "pos_summary": pos_ratios
+            }
+        
+            # 3. LLM Gateway Synthesis (Claude 4.5 for Batch)
+            from analyzers.lemur_query import run_lemur_query
+            # Create temp file for lemur_query
+            temp_path = Path(f"batch_staging_{uuid.uuid4().hex}.json")
+            with open(temp_path, 'w') as f: json.dump(session_json, f)
+            
+            # Run analysis (Note: lemur_query is currently set to gemini-1.5-pro, 
+            # but we can override model here if we want maximum depth)
+            analysis_results = run_lemur_query(temp_path, analysis_context=analysis_context)
+            if temp_path.exists(): temp_path.unlink()
+        
+            lemur_data = analysis_results.get('lemur_analysis', {})
+            
+            # 4. Final Handoff to Hub API
+            error_phenomena = []
+            for err in lemur_data.get('annotated_errors', []):
+                error_phenomena.append({
+                    "item": err.get('quote'),
+                    "correction": err.get('correction'),
+                    "category": err.get('linguistic_category', 'Syntax'),
+                    "explanation": err.get('explanation'),
+                    "source": "LLM_ANALYSIS"
+                })
+            for err in detected_errors:
+                 error_phenomena.append({"item": err.get('text'), "category": "Grammar", "explanation": f"Detected {err.get('error_type')}", "source": "RULE_BASED"})
+        
+            params = {
+                'turns': [{"speaker": t.get("speaker"), "transcript": t.get("transcript")} for t in all_turns],
+                'transcriptText': "\n".join([f"{t['speaker']}: {t['transcript']}" for t in all_turns]),
+                'sessionDate': session_json['start_time'],
+                'duration': duration,
+                'lemurAnalysis': lemur_data.get('response', 'No reasoning provided.'),
+                'errorPhenomena': error_phenomena,
+                'studentProfile': lemur_data.get('student_profile', {}),
+                'notes': notes,
+                'fileHash': calculate_file_hash(audio_path)
+            }
     logger.info(f"📤 Sending Payload to Hub API for student: {student_name}")
     result = await send_to_gitenglish(action='ingest.createSession', student_id_or_name=student_name, params=params)
     
