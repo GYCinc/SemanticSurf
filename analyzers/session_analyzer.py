@@ -20,10 +20,11 @@ import logging
 
 try:
     from textblob import TextBlob
-    TEXTBLOB_AVAILABLE = True
+    textblob_available = True
 except ImportError:
     print("WARNING: textblob not found. Run 'pip install textblob' for advanced metrics.")
-    TEXTBLOB_AVAILABLE = False
+    textblob_available = False
+    TextBlob = None  # type: ignore
 
 # NLTK for advanced NLP (Penn Treebank POS, WordNet, N-grams)
 try:
@@ -31,7 +32,7 @@ try:
     from nltk import word_tokenize, pos_tag, ngrams
     from nltk.stem import WordNetLemmatizer
     from nltk.corpus import wordnet
-    NLTK_AVAILABLE = True
+    nltk_available = True
     # Ensure required data is downloaded
     for resource in ['punkt', 'averaged_perceptron_tagger', 'wordnet', 'punkt_tab', 'averaged_perceptron_tagger_eng']:
         try:
@@ -42,8 +43,9 @@ try:
             except:
                 pass
 except ImportError:
-    NLTK_AVAILABLE = False
+    nltk_available = False
     print("WARNING: nltk not found. Run 'pip install nltk' for POS tagging and n-grams.")
+    wordnet = None  # type: ignore
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -152,7 +154,7 @@ class SessionAnalyzer:
         Runs TextBlob analysis on the student's full text.
         This is the "free" open-source analysis you wanted.
         """
-        if not TEXTBLOB_AVAILABLE or not self.student_full_text:
+        if not textblob_available or not self.student_full_text or TextBlob is None:
             return {'error': 'TextBlob not available or no student text.'}
 
         try:
@@ -341,7 +343,7 @@ class SessionAnalyzer:
         Extract n-grams (bigrams, trigrams, 4-grams) for formulaic language detection.
         AntConc-style cluster/n-gram analysis per SLA Framework.
         """
-        if not NLTK_AVAILABLE or not text:
+        if not nltk_available or not text:
             return {'error': 'NLTK not available or no text', 'bigrams': [], 'trigrams': [], 'fourgrams': []}
         
         try:
@@ -383,7 +385,7 @@ class SessionAnalyzer:
         Penn Treebank POS tagging with WordNet lemmatization.
         Returns POS distribution and vocabulary by category.
         """
-        if not NLTK_AVAILABLE or not text:
+        if not nltk_available or not text:
             return {'error': 'NLTK not available or no text'}
         
         try:
@@ -700,7 +702,7 @@ class SessionAnalyzer:
 
     def analyze_vocabulary(self) -> Dict[str, Any]:
         """Analyze vocabulary using lemmas for all speakers."""
-        if not TEXTBLOB_AVAILABLE:
+        if not textblob_available or TextBlob is None:
             return {'error': 'TextBlob not available. Cannot perform vocabulary analysis.'}
 
         teacher_label = None

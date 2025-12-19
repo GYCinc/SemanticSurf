@@ -18,7 +18,8 @@ function createWindow() {
     height: 700,
     minWidth: 800,
     minHeight: 600,
-    backgroundColor: "#d1d9e6", // T-1000 Liquid Metal chrome
+    transparent: true,
+    backgroundColor: "#00000000", // Transparent for glass effect
     vibrancy: "under-window",
     visualEffectState: "active",
     webPreferences: {

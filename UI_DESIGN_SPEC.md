@@ -1,284 +1,76 @@
-# UI Design Specification - Minimal, Fast, Non-Distracting
+# UI Design Specification - Crimson Glass (Tactile Edition)
 
 ## Design Philosophy
 
-**Simple. Fast. Terminal-like. Zero Bullshit.**
+**Sophisticated. Tactile. Cinematic. High-Fidelity.**
+
+This is not a terminal. This is a high-end pedagogical sensor inspired by the precision of Jony Ive and the atmospheric depth of the Matrix.
 
 ## Visual Design
 
-### Color Palette (Dark Terminal Theme)
-```css
-Background:     #0a0a0a  (almost black)
-Text:           #e0e0e0  (light gray)
-Selected Line:  #1a1a1a  (subtle highlight)
-Marked Line:    #0d3a1a  (dark green tint)
-Status:         #3fb950  (green accent)
-```
+### Color Palette (Crimson Obsidian)
+- **Background:** `radial-gradient(circle at 20% 20%, #5a0a0a 0%, #000000 100%)`
+- **Glass Surface:** `rgba(25, 25, 25, 0.45)` with `blur(50px)`
+- **Accent Emerald:** `#10b981` (Marked items)
+- **Accent Crimson:** `#ef4444` (Tutor / Velocity)
+- **Accent Sky:** `#38bdf8` (Student)
 
 ### Typography
-```css
-Font:           'SF Mono', 'Consolas', 'Monaco', monospace
-Size:           16px (readable but compact)
-Line Height:    1.6 (breathing room)
-Letter Spacing: 0.5px (terminal-like)
-```
+- **UI & Controls:** 'Inter', sans-serif (Precision weights: 400-900)
+- **Data & Timestamps:** 'JetBrains Mono' (Weight: 500)
+- **Transcript Text:** Size: `1.2rem`, Line Height: `1.8`, Weight: `500` (Optimized for deep reading)
 
-### Layout
-```
-┌─────────────────────────────────────────────────────────┐
-│ ● Connected                                    [PAUSED] │ ← Status bar (minimal)
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  i go to store                                          │ ← Line 1
-│  yesterday i buy milk                                   │ ← Line 2 (selected)
-│  but i forget bread                                     │ ← Line 3
-│  so i go back                                           │ ← Line 4
-│  ...                                                    │
-│  (20 lines total)                                       │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-                                                    ↑
-                                            Numpad controls
-                                            (invisible overlay)
-```
+### Layering (Tactile Glass)
+- **Z-Index 100:** Header & Modals (Maximum blur)
+- **Z-Index 50:** Active Focus Sidebar
+- **Z-Index 10:** Transcript Cards (Neomorphic lifting)
+- **Z-Index 0:** Main Crimson Blur Gradient
 
-## Performance Optimizations
+## Interactive Experience
 
-### 1. **Virtual Scrolling**
-- Only render visible lines (~20)
-- Recycle DOM elements
-- Smooth 60fps scrolling
-- No lag even with 1000+ lines buffered
+### Neomorphic Lifting
+Cards are not flat. They use dual-shadow neomorphism:
+- **Outer Dark:** `12px 12px 25px rgba(0, 0, 0, 0.6)`
+- **Outer Light:** `-8px -8px 20px rgba(255, 255, 255, 0.03)`
+- **Hover State:** Card lifts `12px` on the Y-axis, shadows deepen, and scale increases to `1.01`.
 
-### 2. **Efficient Updates**
-```javascript
-// Only update changed text, not entire DOM
-if (currentLine.text !== newText) {
-    currentLine.textContent = newText;  // Direct DOM update
-}
-```
+### Glassmorphism 2.0
+- **Light Catching:** `1px` solid white top and left borders (`opacity: 0.3`) simulate a physical glass edge catching ambient light.
+- **Saturation:** `saturate(180%)` ensures background colors remain vibrant through the blur.
 
-### 3. **Minimal Repaints**
-- Use CSS transforms for selection highlight
-- No layout thrashing
-- GPU-accelerated animations
-- Debounced scroll events
+### Pedagogical Feedback
+- **Word Marking:** Click a word to toggle `.marked-word`. Immediate emerald underline (`3px`) and glow effect.
+- **Turn Marking:** Click card background to toggle `.marked-turn`. Emerald left border (`8px`) and subtle green inner glow.
 
-### 4. **Zero Dependencies**
-- Pure HTML/CSS/JavaScript
-- No React, no Vue, no frameworks
-- Loads in <100ms
-- Runs on potato computers
+## Animation & Motion (Framer Motion)
 
-## Interactive Elements
+### Physics-Based Entry
+- **Turns:** `initial: { opacity: 0, y: 40, scale: 0.92 }` -> `animate: { opacity: 1, y: 0, scale: 1 }`
+- **Words:** Spring-based hover scaling (`stiffness: 400, damping: 10`).
 
-### Selection Indicator (Subtle)
-```css
-.line.selected {
-    background: #1a1a1a;           /* Barely visible */
-    border-left: 2px solid #3fb950; /* Thin green line */
-    padding-left: 8px;
-}
-```
-
-### Marked Indicator (Even More Subtle)
-```css
-.line.marked {
-    background: #0d3a1a;           /* Dark green tint */
-    border-left: 2px solid #3fb950;
-}
-
-.line.marked::before {
-    content: '▸ ';                 /* Small arrow */
-    color: #3fb950;
-    opacity: 0.5;
-}
-```
-
-### Pause Indicator
-```css
-.paused-indicator {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    color: #f85149;
-    font-size: 12px;
-    animation: pulse 1s infinite;
-}
-```
-
-## Keyboard Controls (Silent Operation)
-
-### Visual Feedback (Minimal)
-- **No sounds**
-- **No popups**
-- **No animations** (except subtle highlight)
-- Just a brief flash on the marked line
-
-### Numpad Layout
-```
-┌───┬───┬───┐
-│ 7 │ 8 │ 9 │  7 = Mark FRONT
-│   │   │   │  8 = Mark ALL
-│   │   │   │  9 = Mark BACK
-├───┼───┼───┤
-│ 4 │ 5 │ 6 │  4/6 = Navigate left/right (future)
-│   │   │   │  5 = Deselect/Clear
-├───┼───┼───┤
-│ 1 │ 2 │ 3 │  (Reserved for future)
-│   │   │   │
-└───┴───┴───┘
-```
-
-## Touch Controls
-
-### Gestures
-- **Tap** = Select line
-- **Swipe Left** = Mark front
-- **Swipe Right** = Mark back
-- **Double Tap** = Mark all
-- **Long Press** = Show quick stats (optional)
-
-### Touch Targets
-- Each line is 40px tall (easy to tap)
-- Full-width touch area
-- No tiny buttons
-
-## What It Looks Like
-
-### Normal State
-```
-┌─────────────────────────────────────────────────────────┐
-│ ● Connected                                             │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  i go to store                                          │
-│  yesterday i buy milk                                   │
-│  but i forget bread                                     │
-│  so i go back                                           │
-│  the store is close                                     │
-│  i am sad                                               │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
-
-### With Selection
-```
-┌─────────────────────────────────────────────────────────┐
-│ ● Connected                                    [PAUSED] │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  i go to store                                          │
-│ ▸yesterday i buy milk                                   │ ← Selected
-│  but i forget bread                                     │
-│  so i go back                                           │
-│  the store is close                                     │
-│  i am sad                                               │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
-
-### With Marks
-```
-┌─────────────────────────────────────────────────────────┐
-│ ● Connected                                             │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  i go to store                                          │
-│ ▸yesterday i buy milk                                   │ ← Marked (front)
-│  but i forget bread                                     │
-│  so i go back                                           │
-│ ▸the store is close                                     │ ← Marked (all)
-│  i am sad                                               │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
+### Continuity
+- **Layout Transitions:** `AnimatePresence` with `popLayout` mode ensures that removing a marked note causes others to slide smoothly into place rather than jumping.
 
 ## Technical Stack
 
 ### Frontend
-- **HTML5** - Semantic markup
-- **CSS3** - Modern styling, GPU acceleration
-- **Vanilla JavaScript** - No frameworks, pure performance
-- **WebSocket API** - Native browser support
-
-### Why No Framework?
-1. **Faster** - No bundle, no overhead
-2. **Simpler** - Easy to understand and modify
-3. **Lighter** - Loads instantly
-4. **More Control** - Direct DOM manipulation
+- **Framework:** React 18 (Functional Components + Hooks)
+- **Motion:** Framer Motion 10+ (Physics & Layout)
+- **Styling:** Tailwind CSS (CDN Runtime)
+- **Communication:** Native WebSocket (JSON Protocol)
 
 ## Performance Metrics
 
-### Target Performance
-- **Initial Load**: <100ms
-- **Frame Rate**: 60fps constant
-- **Memory**: <50MB
-- **CPU**: <5% idle, <15% active
-- **Network**: WebSocket only (~1KB/s)
+- **Responsiveness:** <16ms click-to-visual feedback loop.
+- **Diarization Sync:** Automatic transition from "Rough Draft" live text to "HD Final" post-session text.
+- **Resource Usage:** Optimized blur areas to maintain 60fps on modern macOS hardware.
 
-### Optimization Techniques
-1. **RequestAnimationFrame** for smooth updates
-2. **CSS containment** for layout optimization
-3. **Will-change** hints for GPU acceleration
-4. **Passive event listeners** for scroll
-5. **Debounced keyboard** for rapid input
+## Deployment Environment
 
-## Accessibility
+- **Container:** Electron (Native Chrome Runtime)
+- **Window Chrome:** `hiddenInset` title bar with custom traffic light padding (`110px`).
+- **Always on Top:** Toggleable via `Cmd+T` for teaching focus.
 
-### Keyboard-First Design
-- All features accessible via keyboard
-- No mouse required
-- Silent operation (no audio feedback)
-- Visual feedback only
+---
 
-### Screen Reader Support
-- Semantic HTML
-- ARIA labels where needed
-- Live region for new transcripts
-
-## OBS Integration
-
-### Window Capture Friendly
-- Clean, minimal UI
-- No distracting elements
-- High contrast for readability
-- Scales well at different resolutions
-
-### Recommended OBS Settings
-- Window Capture (not Display Capture)
-- Crop to content area
-- Scale to fit
-- No chroma key needed
-
-## File Structure
-
-```
-/
-├── index.html          (Main UI - ~200 lines)
-├── styles.css          (Styling - ~150 lines)
-├── app.js              (Logic - ~300 lines)
-└── sessions/           (JSON storage)
-    └── session_*.json
-```
-
-**Total Code**: ~650 lines of clean, readable code
-
-## Summary
-
-**What You Get:**
-- ✅ Terminal-like aesthetic (dark, minimal)
-- ✅ Blazing fast performance (60fps)
-- ✅ Zero distractions (no fancy UI)
-- ✅ Silent operation (keyboard-focused)
-- ✅ Touch-screen ready
-- ✅ OBS-friendly
-- ✅ Professional but simple
-
-**What You DON'T Get:**
-- ❌ No fancy animations
-- ❌ No colorful themes
-- ❌ No unnecessary features
-- ❌ No bloat
-
-**It's a tool, not a toy. Fast, simple, effective.**
+**Built for the "Flow State" of Teaching.**

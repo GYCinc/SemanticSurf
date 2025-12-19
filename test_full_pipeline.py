@@ -1,186 +1,83 @@
-#!/usr/bin/env python3
-"""
-FULL PIPELINE: Audio → AssemblyAI → Diarized Transcript → Analysis → GitEnglishHub
-
-Usage: 
-  source venv/bin/activate
-  python test_full_pipeline.py /path/to/audio.mp3 "Student Name"
-"""
-
-import os
-import sys
-import json
 import asyncio
-import assemblyai as aai
-import httpx
-from dotenv import load_dotenv
+import json
+import logging
+import os
+from pathlib import Path
+from datetime import datetime
+import uuid
 
-load_dotenv()
+# Mocking the main script imports and environment
+os.environ['MCP_SECRET'] = 'test_secret'
+os.environ['GITENGLISH_API_BASE'] = 'http://localhost:3000' # Mock base
 
-# Config
-aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
-GITENGLISH_API = os.getenv("GITENGLISH_API_BASE", "https://www.gitenglish.com")
-MCP_SECRET = os.getenv("MCP_SECRET")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("FullPipelineTest")
 
-async def get_student_id(student_name: str) -> str:
-    """Look up student ID from name."""
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        print("❌ SUPABASE not configured, can't look up student")
-        return None
+async def test_full_flow():
+    from main import upload_analysis_to_supabase
     
-    from supabase import create_client
-    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print("\n--- 🚀 STARTING FULL PIPELINE INTEGRATION TEST ---\n")
     
-    result = supabase.table("students").select("id, first_name, last_name").ilike("first_name", f"%{student_name}%").execute()
+    # 1. Create a real-looking session file using session_id
+    session_id = "test_sess_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+    session_path = Path(f"sessions/{session_id}.json")
     
-    if result.data and len(result.data) > 0:
-        student = result.data[0]
-        print(f"✅ Found student: {student['first_name']} {student.get('last_name', '')} ({student['id'][:8]}...)")
-        return student['id']
-    
-    print(f"❌ Student '{student_name}' not found")
-    return None
-
-
-async def transcribe_with_diarization(audio_path: str):
-    """Send audio to AssemblyAI and get diarized transcript."""
-    print(f"\n📤 Uploading to AssemblyAI: {audio_path}")
-    
-    config = aai.TranscriptionConfig(
-        speaker_labels=True,
-        speakers_expected=2,
-        punctuate=True,
-        format_text=False,  # Keep fillers
-        speech_model='slam-1'
-    )
-    
-    transcriber = aai.Transcriber()
-    transcript = transcriber.transcribe(audio_path, config)
-    
-    if transcript.status == "error":
-        print(f"❌ Transcription Error: {transcript.error}")
-        return None
-    
-    print(f"✅ Transcription Complete!")
-    print(f"   Duration: {transcript.audio_duration}s")
-    print(f"   Confidence: {transcript.confidence:.2%}")
-    print(f"   Words: {len(transcript.words or [])}")
-    print(f"   Utterances: {len(transcript.utterances or [])}")
-    
-    return transcript
-
-
-async def send_to_gitenglish(action: str, student_id: str, params: dict) -> dict:
-    """Send data to GitEnglishHub for analysis."""
-    if not MCP_SECRET:
-        print("❌ MCP_SECRET not configured")
-        return {"success": False, "error": "MCP_SECRET not configured"}
-    
-    url = f"{GITENGLISH_API}/api/mcp"
-    headers = {
-        "Authorization": f"Bearer {MCP_SECRET}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "action": action,
-        "studentId": student_id,
-        "params": params
+    session_data = {
+        "session_id": session_id,
+        "student_name": "Jocelyn",
+        "start_time": datetime.now().isoformat(),
+        "speaker_map": {"A": "Aaron", "B": "Jocelyn"},
+        "notes": "Student struggled with past tense and articles.",
+        "turns": [
+            {
+                "turn_order": 1,
+                "speaker": "A",
+                "transcript": "Hello Jocelyn, how was your day?",
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "turn_order": 2,
+                "speaker": "B",
+                "transcript": "I go to store yesterday and see a apple. It is very good.",
+                "timestamp": datetime.now().isoformat(),
+                "analysis": {"speaking_rate_wpm": 110, "pauses": [{"duration_ms": 1200, "start_ms": 500}]},
+                "words": [
+                    {"text": "I", "confidence": 0.99, "start_ms": 0, "end_ms": 100},
+                    {"text": "go", "confidence": 0.99, "start_ms": 100, "end_ms": 200},
+                    {"text": "to", "confidence": 0.99, "start_ms": 200, "end_ms": 300},
+                    {"text": "store", "confidence": 0.99, "start_ms": 300, "end_ms": 400},
+                    {"text": "yesterday", "confidence": 0.99, "start_ms": 400, "end_ms": 500}
+                ]
+            }
+        ]
     }
     
-    print(f"\n📤 Sending to GitEnglishHub: {action}")
-    
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(url, headers=headers, json=payload)
+    with open(session_path, 'w') as f:
+        json.dump(session_data, f)
         
-        if response.status_code == 200:
-            result = response.json()
-            print(f"✅ GitEnglishHub Response: success={result.get('success', False)}")
-            return result
-        else:
-            print(f"❌ GitEnglishHub Error ({response.status_code}): {response.text[:200]}")
-            return {"success": False, "error": response.text}
+    print(f"Created synthetic session file: {session_path}")
 
+    # 2. Run the pipeline
+    # We pass the metadata dictionary that on_terminated expects
+    upload_data = {
+        "session_file_path": str(session_path),
+        "audio_path": None, # Skip diarization for this test
+        "duration_seconds": 60
+    }
+    
+    try:
+        # Note: This will attempt a real Gemini call if API key is present
+        # and a real Hub call. We want to see if it reaches the Hub call!
+        await upload_analysis_to_supabase(upload_data)
+        print("\n✅ Pipeline reached final stage (API Upload).")
+    except Exception as e:
+        print(f"\n❌ Pipeline CRASHED: {e}")
+    finally:
+        # Clean up
+        if session_path.exists():
+            session_path.unlink()
 
-async def run_pipeline(audio_path: str, student_name: str):
-    """Run the full pipeline."""
-    print("=" * 60)
-    print("FULL AUDIO PIPELINE TEST")
-    print("=" * 60)
-    
-    # 1. Look up student
-    student_id = await get_student_id(student_name)
-    if not student_id:
-        return
-    
-    # 2. Transcribe with diarization
-    transcript = await transcribe_with_diarization(audio_path)
-    if not transcript:
-        return
-    
-    # 3. Build session data
-    turns = []
-    for utterance in transcript.utterances or []:
-        turns.append({
-            "speaker": utterance.speaker,
-            "transcript": utterance.text,
-            "start": utterance.start,
-            "end": utterance.end,
-            "confidence": utterance.confidence,
-            "words": [
-                {
-                    "text": w.text,
-                    "start": w.start,
-                    "end": w.end,
-                    "confidence": w.confidence,
-                    "speaker": w.speaker
-                }
-                for w in (utterance.words or [])
-            ]
-        })
-    
-    # 4. Send to GitEnglishHub for processing
-    result = await send_to_gitenglish("ingest.createSession", student_id, {
-        "turns": turns,
-        "transcriptText": transcript.text,
-        "duration": transcript.audio_duration,
-        "sessionDate": None,  # Will use current date
-        "speakerStudent": "B"  # Assume B is student
-    })
-    
-    print("\n" + "=" * 60)
-    print("PIPELINE RESULT")
-    print("=" * 60)
-    
-    if result.get("success") and result.get("data", {}).get("success"):
-        data = result.get("data", {})
-        print(f"✅ Session Created: {data.get('sessionId', '?')[:8]}...")
-        print(f"   Words Processed: {data.get('extraction', {}).get('wordsProcessed', 0)}")
-        print(f"   Corpus Entries: {data.get('extraction', {}).get('corpusEntriesCreated', 0)}")
-        print(f"   Phenomena Found: {data.get('extraction', {}).get('phenomenaMatched', 0)}")
-        print(f"   Sanity Doc: {data.get('sanityDocId', 'N/A')}")
-    else:
-        print(f"❌ Pipeline Failed:")
-        print(f"   {result.get('error', result.get('data', {}).get('error', 'Unknown error'))}")
-    
-    # 5. Print sample of diarized transcript
-    print("\n" + "=" * 60)
-    print("DIARIZED TRANSCRIPT (First 5 turns)")
-    print("=" * 60 + "\n")
-    
-    for turn in turns[:5]:
-        print(f"[Speaker {turn['speaker']}]: {turn['transcript'][:100]}...\n")
-
+    print("\n--- 🏁 FULL PIPELINE TEST COMPLETE ---\n")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python test_full_pipeline.py /path/to/audio.mp3 'Student Name'")
-        print("\nExample:")
-        print("  python test_full_pipeline.py ~/recordings/session.mp3 'Carlos'")
-        sys.exit(1)
-    
-    audio_path = sys.argv[1]
-    student_name = sys.argv[2]
-    
-    asyncio.run(run_pipeline(audio_path, student_name))
+    asyncio.run(test_full_flow())

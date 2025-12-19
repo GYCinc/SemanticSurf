@@ -1,111 +1,126 @@
-import os
-from dotenv import load_dotenv
-import httpx
-import asyncio
 import sys
+import json
+import logging
+import time
+from pathlib import Path
+from datetime import datetime
 
-# Load environment variables
-load_dotenv()
+# Import the hardened components
+from main import analyze_session_file, get_student_id
+from analyzers.pos_analyzer import POSAnalyzer
+from analyzers.ngram_analyzer import NgramAnalyzer
+from analyzers.verb_analyzer import VerbAnalyzer
+from analyzers.article_analyzer import ArticleAnalyzer
+from analyzers.amalgum_analyzer import AmalgumAnalyzer
+from analyzers.comparative_analyzer import ComparativeAnalyzer
+from analyzers.phenomena_matcher import PhenomenaPatternMatcher
 
-# Configuration
-AAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
-MCP_SECRET = os.getenv("MCP_SECRET")
-GITENGLISH_API_BASE = os.getenv("GITENGLISH_API_BASE", "https://www.gitenglish.com") # Default from docs, override with env
-WEBHOOK_SECRET = os.getenv("ASSEMBLYAI_WEBHOOK_SECRET")
+def run_deep_audit():
+    print("\n" + "█"*60)
+    print("🔬 DEEP-TISSUE PIPELINE AUDIT: LARGE DATASET VERIFICATION")
+    print("█"*60 + "\n")
 
-print("="*60)
-print("🔍 GitEnglishHub Pipeline Verification")
-print("="*60)
+    # 1. THE DATASET (Realistic multi-turn session)
+    session_data = {
+        "session_id": "audit_test_999",
+        "student_name": "Jocelyn",
+        "teacher_name": "Aaron",
+        "speaker_map": {"A": "Aaron", "B": "Jocelyn"},
+        "start_time": datetime.now().isoformat(),
+        "notes": "Jocelyn was energetic but struggled with past tense and 'the/a' usage in long sentences.",
+        "turns": [
+            {"speaker": "A", "transcript": "Hi Jocelyn! How was your weekend? Did you do anything fun?", "turn_order": 1},
+            {"speaker": "B", "transcript": "My weekend is good. I go to park with my friend. We see a apple tree.", "turn_order": 2, "analysis": {"speaking_rate_wpm": 95}},
+            {"speaker": "A", "transcript": "Oh, a park? That sounds lovely. Was it a big park?", "turn_order": 3},
+            {"speaker": "B", "transcript": "Yes, it is very big. But I have been lived in city for long time so I like nature.", "turn_order": 4, "analysis": {"speaking_rate_wpm": 80}},
+            {"speaker": "A", "transcript": "I agree. Nature is peaceful. In conclusion, we should enjoy the outdoors more often.", "turn_order": 5},
+            {"speaker": "B", "transcript": "He don't like park. He prefer stay at home and play game.", "turn_order": 6, "analysis": {"speaking_rate_wpm": 110}},
+            {"speaker": "A", "transcript": "That's a shame. Playing games is fun, but fresh air is important for health.", "turn_order": 7},
+            {"speaker": "B", "transcript": "I think so. I will went again next week. I need to practice my English more, actually.", "turn_order": 8, "analysis": {"speaking_rate_wpm": 105}}
+        ]
+    }
 
-async def verify():
-    # 1. Check Environment Variables
-    print("\n[1] Environment Variables:")
+    # 2. THE PIPELINE EXECUTION (Simulating upload_analysis_to_supabase)
+    student_turns = [t for t in session_data["turns"] if t["speaker"] == "B"]
+    tutor_turns = [t for t in session_data["turns"] if t["speaker"] == "A"]
     
-    missing = []
-    if not AAI_API_KEY:
-        print("  ❌ ASSEMBLYAI_API_KEY is Missing")
-        missing.append("ASSEMBLYAI_API_KEY")
-    else:
-        print(f"  ✅ ASSEMBLYAI_API_KEY found ({AAI_API_KEY[:4]}...)")
+    student_text = " ".join([t["transcript"] for t in student_turns])
+    tutor_text = " ".join([t["transcript"] for t in tutor_turns])
 
-    if not MCP_SECRET:
-        print("  ❌ MCP_SECRET is Missing")
-        missing.append("MCP_SECRET")
-    else:
-        print(f"  ✅ MCP_SECRET found ({MCP_SECRET[:4]}...)")
-        
-    if not os.getenv("GITENGLISH_API_BASE"):
-         print(f"  ℹ️  GITENGLISH_API_BASE not set, using default: {GITENGLISH_API_BASE}")
-    else:
-         print(f"  ✅ GITENGLISH_API_BASE found: {GITENGLISH_API_BASE}")
+    print(f"📊 Dataset Size: {len(session_data['turns'])} turns, {len(student_text.split())} student words.")
 
-    if not WEBHOOK_SECRET:
-        print("  ⚠️  ASSEMBLYAI_WEBHOOK_SECRET is Missing (Needed if using webhooks)")
-    else:
-        print(f"  ✅ ASSEMBLYAI_WEBHOOK_SECRET found")
-
-    if missing:
-        print(f"\n❌ Critical config missing: {', '.join(missing)}")
-        return
-
-    # 2. Check GitEnglishHub Connectivity (/api/mcp)
-    print(f"\n[2] Checking Connectivity to {GITENGLISH_API_BASE}...")
+    # Execute Analysis
+    start_total = time.time()
     
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        # 2a. Check /api/mcp (GET)
-        mcp_url = f"{GITENGLISH_API_BASE}/api/mcp"
-        print(f"  👉 GET {mcp_url}...")
-        try:
-            resp = await client.get(mcp_url)
-            if resp.status_code == 200:
-                print(f"  ✅ Success ({resp.status_code})")
-                print(f"     Response: {resp.json().get('message')}")
-            else:
-                print(f"  ❌ Failed ({resp.status_code})")
-                print(f"     Response: {resp.text[:100]}")
-        except Exception as e:
-            print(f"  ❌ Connection Error: {e}")
+    # POS
+    pos_counts = POSAnalyzer().analyze(student_text)
+    pos_ratios = POSAnalyzer().get_ratios(student_text)
+    
+    # N-grams
+    ngram_data = NgramAnalyzer().analyze(student_text)
+    tutor_bigrams_raw = NgramAnalyzer().get_bigrams(tutor_text)
+    print(f"DEBUG: Tutor Bigrams Sample: {tutor_bigrams_raw[:10]}")
+    
+    # Verbs & Articles
+    verb_data = VerbAnalyzer().analyze(student_text)
+    article_data = ArticleAnalyzer().analyze(student_text)
+    
+    # Comparative
+    tutor_pos = POSAnalyzer().analyze(tutor_text)
+    tutor_ngram = NgramAnalyzer().analyze(tutor_text)
+    comp_data = ComparativeAnalyzer().compare(
+        student_data={"pos": pos_counts, "ngrams": ngram_data, "text": student_text},
+        tutor_data={"pos": tutor_pos, "ngrams": tutor_ngram, "text": tutor_text}
+    )
+    
+    # Phenomena
+    pm = PhenomenaPatternMatcher()
+    pattern_matches = pm.match(student_text)
+    
+    end_total = time.time()
 
-        # 2b. Check /api/mcp (POST Auth) - Smoke Test
-        print(f"  👉 POST {mcp_url} (Auth Check)...")
-        try:
-            # We don't have a valid studentId usually, but we can try an invalid action to see if Auth passes
-            # or try a harmless action if we knew one.
-            # Sending NO action should return 400 if Auth passes, 401 if Auth fails.
-            resp = await client.post(
-                mcp_url, 
-                headers={"Authorization": f"Bearer {MCP_SECRET}"}, 
-                json={} 
-            )
-            
-            if resp.status_code == 400: # Expected "Missing required field: action"
-                 print(f"  ✅ Auth Success (400 Bad Request as expected for empty body)")
-            elif resp.status_code == 200:
-                 print(f"  ✅ Success (200 OK)")
-            elif resp.status_code == 401:
-                 print(f"  ❌ Auth Failed (401 Unauthorized) - Check MCP_SECRET")
-            else:
-                 print(f"  ⚠️ Unexpected Status ({resp.status_code})")
-                 print(f"     Response: {resp.text[:100]}")
-                 
-        except Exception as e:
-            print(f"  ❌ Connection Error: {e}")
+    # 3. THE CRITICAL EVALUATION
+    print("\n" + "-"*40)
+    print("📈 OUTPUT EVALUATION")
+    print("-"*40)
 
-        # 3. Check Webhook Endpoint Reachability
-        webhook_url = f"{GITENGLISH_API_BASE}/api/webhooks/assemblyai"
-        print(f"\n[3] Checking Webhook Reachability ({webhook_url})...")
-        try:
-            # Send without secret -> Should get 401
-            resp = await client.post(webhook_url, json={})
-            if resp.status_code == 401:
-                print(f"  ✅ Endpoint is Reachable (Returned 401 as expected without secret)")
-            elif resp.status_code == 404:
-                print(f"  ❌ Endpoint Not Found (404) - Deployment might be missing this route")
-            else:
-                print(f"  ⚠️ Unexpected Status ({resp.status_code})")
-        except Exception as e:
-            print(f"  ❌ Connection Error: {e}")
+    # Validate Naturalness
+    s_nat = ngram_data['naturalness_score']
+    t_nat = tutor_ngram['naturalness_score']
+    print(f"Naturalness -> Student: {s_nat} | Tutor: {t_nat}")
+    if t_nat > s_nat:
+        print("✅ SUCCESS: Tutor correctly identified as more natural.")
+    else:
+        print("❌ DEVIATION: Tutor naturalness not significantly higher.")
 
+    # Validate Overlap
+    overlap = comp_data['comparison']['tutor_overlap_pct']
+    print(f"Tutor Overlap: {overlap}%")
+    
+    # Validate Errors
+    detected = []
+    detected.extend([e['match'] for e in article_data.get('errors', [])])
+    detected.extend([e['verb'] for e in verb_data.get('irregular_errors', [])])
+    
+    print(f"Detected Errors: {detected}")
+    if "a apple" in str(detected):
+        print("✅ SUCCESS: Article error 'a apple' captured.")
+    else:
+        print("❌ DEVIATION: Failed to catch 'a apple'.")
+
+    # Validate POS Ratios
+    v_ratio = pos_ratios['verb_ratio']
+    print(f"Student Verb Ratio: {v_ratio}")
+    if 0.1 < v_ratio < 0.4:
+        print("✅ SUCCESS: Verb ratio within realistic conversational range.")
+    else:
+        print(f"❌ ANOMALY: Verb ratio {v_ratio} seems unrealistic.")
+
+    print(f"\n⏱️ Total Execution Time: {round(end_total - start_total, 3)}s")
+    
+    print("\n" + "█"*60)
+    print("🏁 AUDIT COMPLETE")
+    print("█"*60 + "\n")
 
 if __name__ == "__main__":
-    asyncio.run(verify())
+    run_deep_audit()

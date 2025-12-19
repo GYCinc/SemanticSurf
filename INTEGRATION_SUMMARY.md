@@ -1,50 +1,57 @@
-** CORPUS + NOTES INTEGRATION COMPLETE **
+# Semantic Surfer - Integration Status
 
-## What Was Built:
+## Unified Platform Alignment
 
-### 1. **Corpus Building** (Student Turns → `student_corpus` table)
-   - **File Modified:** `main.py` (lines 817-838)
-   - **What it does:** After each session ends, all STUDENT turns (not tutor) are automatically added to the `student_corpus` table in Supabase
-   - **Data stored:** Transcript text + metadata (turn order, timestamp, session ID, confidence, WPM)
-   - **Status:** ✅ Ready to use
+Semantic Surfer is now 100% aligned with the **GitEnglishHub "Petty Dantic" API**. All direct database mutations have been removed in favor of a centralized server-side registry.
 
-### 2. **Notes System** (Capture + LLM Analysis → Supabase)
-   - **Backend:** `main.py`
-     - Added `notes` field to session state (line 218)
-     - WebSocket handler for `update_notes` messages (lines 547-552)
-     - LLM analysis of notes using Claude via AssemblyAI Gateway (lines 841-867)
-     - Notes stored in `student_sessions.metrics.notes` with AI analysis
-   
-   - **Frontend:** `viewer2.html`
-     - "📝 Notes" button in header (line 436)
-     - Notes panel modal (creating now...)
-     - Auto-save to WebSocket
-   - **Status:** ⚠️ 95% complete (notes component partially added, needs final integration)
+---
 
-### 3. **What Runs Automatically on Session End:**
-   ```
-   Session Terminates
-   ↓
-   1. Run local analysis (WPM, vocab, sentiment) [TextBlob]
-   2. Build corpus (student turns → student_corpus table)
-   3. Analyze notes with LLM (if present)
-   4. Upload everything to student_sessions table
-   ```
+## 1. Data Routing Map
 
-## How to Use (Tomorrow):
+| Data Type | Role | Logic | Final Destination |
+|-----------|------|-------|-------------------|
+| **Transcripts** | Event Log | "What Happened" | Supabase (`student_sessions`) |
+| **Analysis Cards** | Artifact | "What Exists" | Sanity CMS |
+| **Session Notes** | Context | "Executive Summary" | Supabase + LLM Input |
+| **Student Corpus** | Knowledge | "Learned Items" | Supabase (via Inbox Curation) |
 
-1. **Start app:** `./start-electron.sh` (unchanged)
-2. **Select student** from dropdown or create new
-3. **Run class** (transcription happens automatically)
-4. **Optional:** Click "📝 Notes" button, type notes, click "Save"
-5. **End session** → Everything uploads automatically
+---
 
-## What to Test:
+## 2. Definitive API Handlers
 
-- [ ] Create table in Supabase (if you haven't already)
-- [ ] Run a session
-- [ ] Check `student_corpus` table for student turns
-- [ ] Check `student_sessions.metrics` for notes analysis
-- [ ] View dashboard for stats
+| Action | Origin | Trigger | Payload Contents |
+|--------|--------|---------|------------------|
+| `ingest.createSession` | `main.py` | End Session | Turns, POS/CAF Metrics, Notes, LLM Analysis |
+| `sanity.saveCard` | `viewer2.html` | Click Mark | Category, Quote, Explanation, Timestamp |
 
-**Notes component needs one more small fix to complete - will do if you want, or leave for tomorrow when testing.**
+---
+
+## 3. Student Synchronization
+
+- **Priority 1:** Supabase `students` table.
+- **Priority 2 (Fallback):** Local `student_profiles.json` cache.
+- **Reliability:** `main.py` utilizes a `try-except` fallback to bypass macOS `certifi`/SSL issues.
+- **Sanitization:** Auto-filters "Test", "Unknown", "null", and system accounts.
+
+---
+
+## 4. Pipeline Logic Consistency
+
+- **Analysis Engine:** Switched entirely to **LLM Gateway**. (Gemini 1.5 Pro / Claude 4.5).
+- **LeMUR Status:** DEPRECATED and REMOVED from all code paths.
+- **Diarization:** HD Batch pass is the authoritative source for speaker labels.
+- **Hallucination Shield:** Local Python metrics (POS, Verbs, Overlap) are injected into all LLM prompts to ensure grounding in transcript data.
+
+---
+
+## 5. Deployment Checklist
+
+- [x] **UI:** Crimson Glass ( Johnny Ive Edition).
+- [x] **Launch:** Unified `./launch.sh`.
+- [x] **Diarization:** HD Batch Pass enabled.
+- [x] **Notes:** Sidebar integrated into LLM context.
+- [x] **Corpus:** Inbox-staging workflow verified.
+
+---
+
+*This document serves as the final integration audit for the Semantic Surfer system.*

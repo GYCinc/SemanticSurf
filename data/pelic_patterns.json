@@ -1,0 +1,31 @@
+{
+  "subject_verb": [
+    {
+      "wrong": "he have",
+      "right": "he has",
+      "tag": "SV"
+    },
+    {
+      "wrong": "she go",
+      "right": "she goes",
+      "tag": "SV"
+    },
+    {
+      "wrong": "who have",
+      "right": "who has",
+      "tag": "SV-Clause"
+    }
+  ],
+  "verb_tense": [
+    {
+      "wrong": "i see yesterday",
+      "right": "i saw yesterday",
+      "tag": "Tense"
+    },
+    {
+      "wrong": "run fast",
+      "right": "ran fast",
+      "tag": "Tense"
+    }
+  ]
+}

@@ -1,5 +1,9 @@
 import os
 import json
+import certifi
+# FORCE SSL CERT FILE for macOS
+os.environ['SSL_CERT_FILE'] = certifi.where()
+
 from dotenv import load_dotenv
 from supabase import create_client
 

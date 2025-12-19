@@ -34,9 +34,14 @@ This document outlines the data flow from audio input to final storage.
     *   User clicks Line -> Copied to Clipboard + Added to "Marked Notes" + Saved to Session.
     *   **Note:** These actions update the JSON file immediately.
 
-## 5. Post-Session Analysis (Optional)
-*   **Trigger:** "End Session" or script completion.
-*   **Upload:** If Supabase/Internet is available:
-    1.  **Corpus:** Individual turns added to `student_corpus` table.
-    2.  **Metrics:** Session metadata (WPM, duration) added to `student_sessions`.
-    3.  **Sanity:** Report uploaded to Sanity CMS (if configured).
+## 5. Post-Session Pipeline (Unified Hub API)
+*   **Trigger:** "END SESSION" button in `viewer2.html`.
+*   **Sequence:**
+    1.  **HD Diarization:** Batch processing via AssemblyAI Async API for precise speaker labeling.
+    2.  **Local Analysis:** Execution of `POS`, `Ngram`, `Verb`, and `Comparative` analyzers.
+    3.  **LLM Synthesis:** **Gemini 1.5 Pro** summarizes the session using full context (Transcript + Notes + Local Metrics).
+    4.  **API Handoff:** A single payload is sent to `https://www.gitenglish.com/api/mcp` via `ingest.createSession`.
+*   **Final Destination (Handled by Hub):**
+    *   **Supabase:** Session logs and metadata.
+    *   **Sanity:** Pedagogical artifacts (Analysis Cards).
+    *   **Inbox:** Words/Terms staged for manual curation into the Student Corpus.
