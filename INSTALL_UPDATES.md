@@ -2,13 +2,14 @@
 
 To fully enable the enhanced audio pipeline (Live + High-Definition Post-Processing), please install the following updates.
 
-## 1. System Dependencies (Debian/Ubuntu)
-The `pyaudio` library requires the `portaudio19-dev` system header files to compile correctly.
+## 1. System Dependencies (macOS)
+The `pyaudio` library requires the `portaudio` system header files to compile correctly.
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y portaudio19-dev
+brew install portaudio
 ```
+
+*(If you don't have Homebrew installed, visit https://brew.sh/)*
 
 ## 2. Python Dependencies
 The enhanced pipeline adds `nltk` for POS tagging and `textblob` for advanced metrics, alongside `pyaudio` for audio capture.
