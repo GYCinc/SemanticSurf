@@ -1,0 +1,11 @@
+assemblyai
+httpx
+numpy
+openrouter>=0.1.1
+python-dotenv
+textblob
+websockets
+# Server Dependencies
+fastapi
+uvicorn
+openrouter-client
