@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 class OfficialCategory(str, Enum):
@@ -24,11 +23,11 @@ class LanguageFeedback(BaseModel):
     suggested_correction: str = Field(alias="suggestedCorrection")
     explanation: str = Field(description="Linguistic explanation.")
     detected_trigger: str = Field(alias="detectedTrigger")
-    unstructured_insight: Optional[str] = Field(default=None, description="The TheGuru's Journal: High-fidelity nuances.")
+    unstructured_insight: str | None = Field(default=None, alias="unstructuredInsight", description="The TheGuru's Journal: High-fidelity nuances.")
 
 class Turn(BaseModel):
     turn_order: int
     transcript: str
     speaker: str
     timestamp: str
-    analysis: Optional[LanguageFeedback] = None
+    analysis: LanguageFeedback | None = None

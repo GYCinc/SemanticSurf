@@ -1,13 +1,13 @@
 import re
 import logging
-from typing import final
+from typing import Any, final
+from collections.abc import Sequence, Mapping
 
 logger = logging.getLogger("ArticleAnalyzer")
 
-@final
 class ArticleAnalyzer:
     """
-    Analyzes text specifically for Indefinite Article errors (a vs an).
+    Analyzes text for common English article errors (a/an mismatches).
     """
 
     vowels: set[str]
@@ -22,14 +22,11 @@ class ArticleAnalyzer:
         self.a_exceptions = ["university", "united", "unique", "useful", "usage", "eu", "one"] # Vowel start but consonant sound
 
     def analyze(self, text: str) -> list[dict[str, str]]:
-        """
-        Analyzes text specifically for Indefinite Article errors (a vs an).
-        """
-        errors: list[dict[str, str]] = []
+        errors = []
         
         # Regex to find "a [word]" or "an [word]" case-insensitive
         # \b ensures word boundary
-        matches = re.finditer(r"\b(a|an)\s+(\w+)\b", text, re.IGNORECASE)
+        matches = re.finditer(r'\b(a|an)\s+([a-z]+)\b', text, re.IGNORECASE)
         
         for match in matches:
             article = match.group(1).lower()
@@ -48,19 +45,19 @@ class ArticleAnalyzer:
             elif article == "an" and not needs_an:
                 errors.append({
                     "item": f"{article} {next_word}",
-                    "match": f"{article} {next_word}",
+                    "match": f"{article} {next_word}", # Ensure 'match' exists for main.py extension
                     "correction": f"a {next_word}",
                     "explanation": f"Use 'a' before '{next_word}' because it starts with a consonant sound."
                 })
                 
         return errors
 
+    @final
     def _starts_with_vowel_sound(self, word: str) -> bool:
         """
         Determines if a word starts with a vowel sound.
         """
         if not word: return False
-        
         # Specific exceptions
         if word in self.an_exceptions:
             return True

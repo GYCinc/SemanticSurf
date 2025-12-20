@@ -24,7 +24,7 @@ logger = logging.getLogger("IngestAudio")
 
 # --- Configuration ---
 AAI_API_KEY: str = os.getenv("AAI_API_KEY", os.getenv("ASSEMBLYAI_API_KEY", ""))
-GITENGLISH_API_BASE: str = os.getenv("GITENGLISH_API_BASE", "https://gitenglishhub-production.up.railway.app")
+GITENGLISH_API_BASE: str = os.getenv("GITENGLISH_API_BASE", "https://gitenglish.com")
 GITENGLISH_MCP_SECRET: str = os.getenv("MCP_SECRET", "")
 
 # --- NO DIRECT DATABASE CONNECTIONS ---
@@ -183,7 +183,7 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> tuple
         all_turns: list[SessionTurn] = []
         
         # Iterate Raw Words
-        raw_words = t_raw.words # Use the top-level words list from Raw transcript
+        raw_words = t_raw.words if t_raw.words else [] # Use the top-level words list from Raw transcript
         
         # Helper to find speaker for a given time range
         # Simple optimization: keep track of last index
@@ -344,14 +344,30 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
     }
 
     # 3. LLM Gateway Synthesis (Claude 4.5 for Batch)
-    from AssemblyAIv2.analyzers.lm_gateway import run_lm_gateway_query
+    from .analyzers.llm_gateway import run_lm_gateway_query
     # Create temp file for lemur_query
     temp_path = Path(f"batch_staging_{uuid.uuid4().hex}.json")
     with open(str(temp_path), 'w') as f: json.dump(session_json, f)
             
     # Run analysis (Note: lm_gateway is currently set to gemini-1.5-pro, 
     # but we can override model here if we want maximum depth)
-    analysis_results = run_lm_gateway_query(temp_path, analysis_context=analysis_context)
+    from .analyzers.schemas import Turn
+    turn_objs: list[Turn] = []
+    for i, t in enumerate(all_turns or []):
+        turn_objs.append(Turn(
+            turn_order=i + 1,
+            transcript=t['transcript'],
+            speaker=t['speaker'],
+            timestamp=datetime.fromtimestamp(t['start'] / 1000).isoformat() if t.get('start') else datetime.now().isoformat()
+        ))
+
+    analysis_results = run_lm_gateway_query(
+        student_name=student_name,
+        turns=turn_objs,
+        analysis_context=analysis_context,
+        session_id=str(session_json.get("session_id", "")),
+        notes=notes
+    )
     if temp_path.exists(): temp_path.unlink()
 
     if isinstance(analysis_results, dict):

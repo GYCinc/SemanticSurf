@@ -1,5 +1,6 @@
 import logging
 from typing import Any, final
+from collections.abc import Mapping, Sequence
 
 logger = logging.getLogger("LearnerErrorAnalyzer")
 
@@ -12,19 +13,20 @@ class LearnerErrorAnalyzer:
     Covers: Morphological, Syntactic, Lexical, and Discourse errors.
     """
 
-    WRONG_PLURALS: dict[str, str] = {
-        "peoples": "people",
-        "childrens": "children",
-        "mens": "men",
-        "womens": "women",
-        "polices": "police",
-        "furnitures": "furniture",
-        "informations": "information",
-        "advices": "advice"
-    }
+    wrong_plurals_map: dict[str, str]
     
     def __init__(self):
-        pass
+        # Common irregular plurals or "learner forms" to catch
+        self.wrong_plurals_map = {
+            "peoples": "people",
+            "childrens": "children",
+            "mens": "men",
+            "womens": "women",
+            "polices": "police",
+            "furnitures": "furniture",
+            "informations": "information",
+            "advices": "advice"
+        }
 
     def _check_missing_subject(self, blob: Any) -> list[dict[str, Any]]:
         """Detects sentences starting with 'Is' or 'Are' (typical L1 Spanish/Portuguese error)."""
@@ -32,14 +34,13 @@ class LearnerErrorAnalyzer:
         for sentence in blob.sentences:
             if not sentence.words:
                 continue
-            first_word = sentence.words[0].lower()
+            first_word = str(sentence.words[0]).lower()
             if first_word in ['is', 'are', 'was', 'were']:
                 errors.append({
                     "item": f"{sentence[:20]}...",
-                    "correction": f"It {sentence[:20]}...",
-                    "explanation": "Missing subject pronoun. Use 'It' before the verb.",
-                    "category": "Syntax",
-                    "confidence": 0.9
+                    "match": first_word,
+                    "correction": f"It {first_word}",
+                    "explanation": f"Sentence starts with '{first_word}'. In English, most sentences require an explicit subject (e.g., 'It {first_word}')."
                 })
         return errors
 
@@ -50,66 +51,34 @@ class LearnerErrorAnalyzer:
         for i in range(len(tags)):
             word, tag = tags[i]
             
-            # Look for Subject
-            is_3rd_sing_subject = word.lower() in ['he', 'she', 'it']
-            is_plural_subject = word.lower() in ['they', 'we'] or tag == 'NNS'
-            is_relative_subject = word.lower() in ['who', 'which', 'that']
-            
-            if not (is_3rd_sing_subject or is_plural_subject or is_relative_subject):
-                continue
-                
-            # Find the next verb (within 3 words)
-            for j in range(i + 1, min(i + 4, len(tags))):
-                next_word, next_tag = tags[j]
-                if next_tag.startswith('VB'):
-                    # Match Relative Subject 'who' with potential 3rd person mismatch
-                    if is_relative_subject and next_tag == 'VBP':
-                        # If the word before 'who' was singular, 'have' is an error
-                        prev_word, prev_tag = tags[i-1] if i > 0 else ("", "")
-                        if prev_tag == 'NN' or prev_tag == 'NNP':
-                             errors.append({
-                                "item": f"{prev_word} {word} {next_word}",
-                                "correction": f"{prev_word} {word} {next_word}s",
-                                "explanation": f"Subject-verb agreement in relative clause: '{prev_word}' is singular.",
-                                "category": "Morphology", "confidence": 0.85
-                            })
-                    
-                    # Match 3rd Person Singular Subject with plural verb (VBP)
-                    if is_3rd_sing_subject and next_tag == 'VBP':
-                        if next_word.lower() in ['have', 'do', 'go', 'be']:
-                             errors.append({
-                                "item": f"{word}...{next_word}",
-                                "correction": f"{word} {next_word}s",
-                                "explanation": f"Subject-verb agreement: use 3rd person form with '{word}'",
-                                "category": "Morphology", "confidence": 0.88
-                            })
-                    # Match Plural Subject with 3rd person singular verb (VBZ)
-                    elif is_plural_subject and next_tag == 'VBZ':
-                        errors.append({
-                            "item": f"{word}...{next_word}",
-                            "correction": f"{word} {'are' if next_word.lower()=='is' else next_word[:-1]}",
-                            "explanation": f"Subject-verb agreement: use plural form with '{word}'",
-                            "category": "Morphology", "confidence": 0.88
-                        })
-                    break # Only check the first verb found
+            # Simple check: 3rd person singular subject (NN) followed by base form verb (VBP) 
+            # Or plural subject (NNS) followed by 3rd person singular verb (VBZ)
+            if tag == 'NN' and i < len(tags) - 1:
+                next_word, next_tag = tags[i+1]
+                if next_tag == 'VBP' and not next_word.startswith("'"): # Skip contractions
+                    errors.append({
+                        "item": f"{word} {next_word}",
+                        "match": f"{word} {next_word}",
+                        "correction": f"{word} {next_word}s", 
+                        "explanation": f"Possible Subject-Verb agreement error: '{word}' (singular) used with '{next_word}' (plural form)."
+                    })
         return errors
 
     def _check_wrong_plurals(self, text: str) -> list[dict[str, Any]]:
         errors: list[dict[str, Any]] = []
-        for wrong, right in self.WRONG_PLURALS.items():
+        for wrong, right in self.wrong_plurals_map.items():
             if f" {wrong} " in f" {text.lower()} ":
                 errors.append({
                     "item": wrong,
+                    "match": wrong,
                     "correction": right,
-                    "explanation": f"Irregular plural: use '{right}' instead of '{wrong}'",
-                    "category": "Morphology",
-                    "confidence": 0.95
+                    "explanation": f"'{wrong}' is an irregular plural or uncountable noun. Use '{right}' instead."
                 })
         return errors
 
     def analyze(self, text: str) -> list[dict[str, Any]]:
         """
-        Analyzes text for learner errors using both regex and dynamic logic.
+        Main entry point for morphological/syntactic analysis.
         """
         from textblob import TextBlob
         blob = TextBlob(text)
@@ -120,24 +89,9 @@ class LearnerErrorAnalyzer:
         errors.extend(self._check_sv_agreement(blob))
         errors.extend(self._check_wrong_plurals(text))
         
-        # 2. Add some "Legacy/PELIC" logic for idiomatic errors
-        if "depend of" in text.lower():
-            errors.append({"item": "depend of", "correction": "depend on", "explanation": "Collocation error", "category": "Lexis", "confidence": 0.9})
-        if "i am agree" in text.lower():
-            errors.append({"item": "i am agree", "correction": "i agree", "explanation": "'Agree' is a verb, not an adjective", "category": "Lexis", "confidence": 0.9})
-
+        # 2. Add static match for UI if missing
+        for err in errors:
+            if 'match' not in err:
+                err['match'] = err.get('item', '')
+                
         return errors
-
-    def get_summary(self, text: str) -> dict[str, Any]:
-        """
-        Returns a summary of learner errors by category.
-        """
-        errors = self.analyze(text)
-        categories: dict[str, int] = {}
-        for e in errors:
-            cat = str(e.get("category", "Unknown"))
-            categories[cat] = categories.get(cat, 0) + 1
-        return {
-            "total_errors": len(errors),
-            "by_category": categories
-        }

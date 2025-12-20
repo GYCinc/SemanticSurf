@@ -76,7 +76,7 @@ logger = logging.getLogger(__name__)
 @final
 class SessionAnalyzer:
     """Analyzes session data for ESL teaching insights"""
-    session: dict[str, object]
+    session: Mapping[str, Any]
     turns: list[dict[str, object]]
     speaker_map: dict[str, object]
     teacher_name: str
@@ -85,21 +85,17 @@ class SessionAnalyzer:
     teacher_label: str
     student_turns_list: list[dict[str, Any]]
     student_full_text: str
-    teacher_turns: list[dict[str, object]]
+    teacher_turns: list[dict[str, dict[str, Any]]]
     teacher_full_text: str
 
-    def __init__(self, session_data: dict[str, Any] | None = None):
-        """
-        Initializes the SessionAnalyzer with a session dictionary.
-        """
-        self.session = session_data or {}
-        self.student_turns = []
-        self.turns = cast(list[dict[str, object]], self.session.get('turns', []))
+    def __init__(self, session_data: Mapping[str, Any]):
+        self.session = session_data
+        self.turns = cast(list[dict[str, object]], session_data.get('turns', []))
 
         # --- Find the Student AND Teacher ---
-        self.speaker_map = cast(dict[str, object], self.session.get('speaker_map', {}))
-        self.teacher_name = cast(str, self.session.get('teacher_name', 'Teacher'))
-        self.student_name = cast(str, self.session.get('student_name', 'Student'))
+        self.speaker_map = cast(dict[str, object], session_data.get('speaker_map', {}))
+        self.teacher_name = cast(str, session_data.get('teacher_name', 'Teacher'))
+        self.student_name = cast(str, session_data.get('student_name', 'Student'))
 
         self.student_label = 'Unknown'
         self.teacher_label = 'Unknown'
@@ -110,14 +106,6 @@ class SessionAnalyzer:
             elif name == self.teacher_name:
                 self.teacher_label = label
 
-        # Fallback for missing speaker_map
-        if self.student_label == 'Unknown' and not self.speaker_map:
-             speakers = {str(t.get('speaker')) for t in self.turns if t.get('speaker')}
-             if "Speaker A" in speakers:
-                 self.student_label = "Speaker A"
-                 self.student_name = "Student (Fallback)"
-                 logger.warning("Using fallback: Speaker A is Student")
-
         # Student setup
         if self.student_label == 'Unknown':
             logger.warning("Could not find student label in speaker_map. Analysis may be empty.")
@@ -125,8 +113,8 @@ class SessionAnalyzer:
             self.student_full_text = ""
         else:
             logger.info(f"Analyzer: Found Student '{self.student_name}' with label '{self.student_label}'")
-            self.student_turns = self._get_turns_for_speaker(self.student_label)
-            self.student_full_text = " ".join([cast(str, t.get('transcript', '')) for t in self.student_turns])
+            self.student_turns_list = cast(list[dict[str, Any]], self._get_turns_for_speaker(self.student_label))
+            self.student_full_text = " ".join([cast(str, t.get('transcript', '')) for t in self.student_turns_list])
 
         # Teacher setup
         if self.teacher_label == 'Unknown':
@@ -135,7 +123,7 @@ class SessionAnalyzer:
             self.teacher_full_text = ""
         else:
             logger.info(f"Analyzer: Found Teacher '{self.teacher_name}' with label '{self.teacher_label}'")
-            self.teacher_turns = self._get_turns_for_speaker(self.teacher_label)
+            self.teacher_turns = cast(list[dict[str, Any]], self._get_turns_for_speaker(self.teacher_label))
             self.teacher_full_text = " ".join([cast(str, t.get('transcript', '')) for t in self.teacher_turns])
 
 
@@ -143,17 +131,17 @@ class SessionAnalyzer:
         """Run all analyses for BOTH student and teacher with comparisons"""
 
         student_metrics = {
-            'speaking_rate': self.analyze_speaking_rate(self.student_turns),
-            'pauses': self.analyze_pauses(self.student_turns),
-            'complexity_basic': self.analyze_complexity(self.student_turns),
+            'speaking_rate': self.analyze_speaking_rate(self.student_turns_list),
+            'pauses': self.analyze_pauses(self.student_turns_list),
+            'complexity_basic': self.analyze_complexity(self.student_turns_list),
             'vocabulary_analysis': self.analyze_vocabulary(),
             'advanced_local_analysis': self.run_textblob_analysis(),
-            'fillers': self.analyze_fillers(self.student_turns),
-            'hesitation_patterns': self.analyze_hesitation_patterns(self.student_turns),
+            'fillers': self.analyze_fillers(self.student_turns_list),
+            'hesitation_patterns': self.analyze_hesitation_patterns(self.student_turns_list),
             # SLA Framework additions
             'ngram_analysis': self.analyze_ngrams(self.student_full_text),
             'pos_analysis': self.analyze_pos_tags(self.student_full_text),
-            'caf_metrics': self.analyze_caf(self.student_turns),
+            'caf_metrics': self.analyze_caf(self.student_turns_list),
         }
 
         teacher_metrics = {
@@ -243,7 +231,7 @@ class SessionAnalyzer:
     def analyze_speaking_rate(self, turns: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         """Analyze words per minute over time"""
         if turns is None:
-            turns = self.student_turns
+            turns = self.student_turns_list
         rates: list[dict[str, int | float]] = []
         for turn in turns:
             wpm = cast(dict[str, object], turn.get('analysis', {})).get('speaking_rate_wpm')
@@ -263,7 +251,7 @@ class SessionAnalyzer:
     def analyze_pauses(self, turns: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         """Analyze pause patterns"""
         if turns is None:
-            turns = self.student_turns
+            turns = self.student_turns_list
         all_pauses: list[float] = []
         long_pauses: list[float] = []
         for turn in turns:
@@ -286,7 +274,7 @@ class SessionAnalyzer:
     def analyze_complexity(self, turns: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         """Analyze vocabulary complexity"""
         if turns is None:
-            turns = self.student_turns
+            turns = self.student_turns_list
         all_words: list[str] = []
         for turn in turns:
             words = cast(list[dict[str, object]], turn.get('words', []))
@@ -307,7 +295,7 @@ class SessionAnalyzer:
     def analyze_fillers(self, turns: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         """Count filler words"""
         if turns is None:
-            turns = self.student_turns
+            turns = self.student_turns_list
         fillers = ['um', 'uh', 'like', 'you know', 'so', 'well', 'actually']
         filler_counts: Counter[str] = Counter()
         total_words = 0
@@ -331,7 +319,7 @@ class SessionAnalyzer:
     def analyze_hesitation_patterns(self, turns: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         """Find words that precede long pauses - potential avoidance patterns"""
         if turns is None:
-            turns = self.student_turns
+            turns = self.student_turns_list
         
         hesitation_words: list[dict[str, str | float]] = []  # Words before long pauses
         
@@ -782,7 +770,7 @@ class SessionAnalyzer:
                 break
         
         student_words: list[str] = []
-        for turn in self.student_turns:
+        for turn in self.student_turns_list:
             student_words.extend([str(w.get('text', '')).lower() for w in cast(list[dict[str, object]], turn.get('words', []))])
 
         teacher_words: list[str] = []

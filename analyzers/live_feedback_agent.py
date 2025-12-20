@@ -1,11 +1,11 @@
 import json
 import logging
-import os
 import httpx
-from schemas import AnalysisCategory, LanguageFeedback
+from typing import Any
+from .schemas import OfficialCategory, LanguageFeedback
 from dotenv import load_dotenv
 
-load_dotenv()
+_ = load_dotenv()
 logger = logging.getLogger(__name__)
 
 class LiveFeedbackAgent:
@@ -17,11 +17,14 @@ class LiveFeedbackAgent:
     which get mapped to the 6 student-facing publicCategories.
     """
 
+    api_key: str
+    gateway_url: str
+
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.gateway_url = "https://llm-gateway.assemblyai.com/v1/chat/completions"
 
-    async def analyze_turn(self, text: str, context: str = "") -> dict:
+    async def analyze_turn(self, text: str, context: str = "") -> dict[str, Any]:
         """
         Analyzes a turn and returns a dictionary matching the LanguageFeedback schema.
         """
@@ -40,7 +43,7 @@ class LiveFeedbackAgent:
                         "properties": {
                             "category": {
                                 "type": "string",
-                                "enum": [e.value for e in AnalysisCategory],
+                                "enum": [e.value for e in OfficialCategory],
                                 "description": "The category of the linguistic issue."
                             },
                             "suggestedCorrection": {
@@ -83,6 +86,7 @@ class LiveFeedbackAgent:
             async with httpx.AsyncClient() as client:
                 response = await client.post(self.gateway_url, headers={"authorization": self.api_key, "content-type": "application/json"}, json=payload, timeout=15.0)
                 response.raise_for_status()
+                _ = response # Mark as used
                 result = response.json()
 
                 try:

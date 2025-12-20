@@ -1,0 +1,101 @@
+/* Whiteboard Pop-over Overlay */
+#wb-overlay {
+    position: fixed;
+    top: 70px; /* Below header */
+    right: 20px;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(15, 15, 15, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+}
+
+#wb-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: scale(1);
+}
+
+/* Toolbar */
+.wb-toolbar {
+    height: 50px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: rgba(255,255,255,0.02);
+}
+
+.wb-title {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #fff;
+    opacity: 0.5;
+}
+
+.wb-tools {
+    display: flex;
+    gap: 10px;
+}
+
+.wb-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.wb-btn:hover { background: rgba(255,255,255,0.1); }
+.wb-btn.active { background: #667eea; border-color: #667eea; }
+
+.color-picker {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+.color-picker.active { border-color: white; }
+
+/* Canvas Area */
+#wb-canvas-container {
+    flex: 1;
+    position: relative;
+    cursor: crosshair;
+    background: #111;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.wb-status {
+    font-size: 10px;
+    color: #22c55e;
+    margin-right: 10px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.wb-status.visible { opacity: 1; }

@@ -10,7 +10,7 @@ import threading
 import gc
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, cast, List, Optional, TypedDict, Dict
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -24,23 +24,14 @@ from assemblyai.streaming.v3 import (
     StreamingClientOptions,
     StreamingError,
     StreamingEvents,
-    StreamingParameters,
     TerminationEvent,
     TurnEvent,
+    StreamingParameters,
 )
 
-# --- ANALYZER IMPORTS ---
-from AssemblyAIv2.analyzers.session_analyzer import SessionAnalyzer
-from AssemblyAIv2.analyzers.pos_analyzer import POSAnalyzer
-from AssemblyAIv2.analyzers.ngram_analyzer import NgramAnalyzer
-from AssemblyAIv2.analyzers.verb_analyzer import VerbAnalyzer
-from AssemblyAIv2.analyzers.article_analyzer import ArticleAnalyzer
-from AssemblyAIv2.analyzers.amalgum_analyzer import AmalgumAnalyzer
-from AssemblyAIv2.analyzers.comparative_analyzer import ComparativeAnalyzer
-from AssemblyAIv2.analyzers.phenomena_matcher import ErrorPhenomenonMatcher
-from AssemblyAIv2.analyzers.student_corpus_engine import StudentCorpusEngine
-from AssemblyAIv2.analyzers.lm_gateway import run_lm_gateway_query
-from AssemblyAIv2.ingest_audio import (
+# --- CONFIG & ANALYZERS (Lazy Loaded) ---
+from .analyzers.llm_gateway import run_lm_gateway_query
+from .ingest_audio import (
     calculate_file_hash,
     perform_batch_diarization,
 )
@@ -50,15 +41,32 @@ logger = logging.getLogger("SemanticServer")
 
 # --- CONFIGURATION ---
 api_key = os.getenv("ASSEMBLYAI_API_KEY")
-GITENGLISH_API_BASE = os.getenv("GITENGLISH_API_BASE", "https://gitenglishhub-production.up.railway.app")
+GITENGLISH_API_BASE = os.getenv("GITENGLISH_API_BASE", "https://gitenglish.com")
 GITENGLISH_MCP_SECRET = os.getenv("MCP_SECRET")
+
+# --- TYPES ---
+class SessionTurn(TypedDict):
+    turn_order: int
+    transcript: str
+    speaker: str
+    words: List[Dict[str, Any]]
+    timestamp: str
+
+class SessionData(TypedDict):
+    session_id: Optional[str]
+    start_time: Optional[str]
+    student_name: str
+    turns: List[SessionTurn]
+    file_path: Optional[str]
+    notes: str
+    audio_path: Optional[str]
 
 # Global State
 connected_clients = set()
 main_loop = None
 audio_stream_manager = None
 
-current_session = {
+current_session: SessionData = {
     "session_id": None,
     "start_time": None,
     "student_name": "Unknown",
@@ -126,29 +134,24 @@ async def get_existing_students() -> list[str]:
     
     return sorted(list(students))
 
-# --- HUB SYNC ---
-
-async def send_to_gitenglish(action: str, student_id_or_name: str, params: dict[str, Any]) -> dict[str, Any]:
-    if not GITENGLISH_MCP_SECRET:
-        return {"success": False, "error": "MCP_SECRET missing"}
-    
-    url = f"{GITENGLISH_API_BASE}/api/mcp"
-    headers = {"Authorization": f"Bearer {GITENGLISH_MCP_SECRET}", "Content-Type": "application/json"}
-    payload = {"action": action, "studentId": student_id_or_name, "params": params}
-    
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            return response.json() if response.status_code == 200 else {"success": False, "error": response.text}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
 # --- WEBSOCKET HANDLER ---
+from .analyzers.llm_gateway import push_to_semantic_server
+from .analyzers.schemas import Turn
+
+# Global list of connected clients (websockets)
+connected_clients = set()
 
 async def broadcast_message(message):
+    """
+    Sends a JSON message to all connected WebSocket clients.
+    """
     if connected_clients:
         msg = json.dumps(message)
-        await asyncio.gather(*[client.send(msg) for client in connected_clients], return_exceptions=True)
+        # Create tasks for all sends
+        tasks = [asyncio.create_task(client.send(msg)) for client in connected_clients]
+        # Wait for all to complete, ignoring errors
+        await asyncio.gather(*tasks, return_exceptions=True)
+
 
 async def websocket_handler(websocket):
     connected_clients.add(websocket)
@@ -169,13 +172,43 @@ async def websocket_handler(websocket):
                 await websocket.send(json.dumps({"message_type": "student_list", "students": students}))
             
             elif m_type == "start_session":
-                current_session["student_name"] = data.get("student_name", "Unknown")
+                current_session["student_name"] = str(data.get("student_name", "Unknown"))
                 current_session["turns"] = []
                 logger.info(f"🚀 Starting session for: {current_session['student_name']}")
                 threading.Thread(target=run_streaming_client, daemon=True).start()
                 
             elif m_type == "end_session":
                 logger.info("🛑 Stop requested by UI")
+                # Trigger Handoff
+                if current_session["session_id"] and current_session["turns"]:
+                    logger.info("🚚 Initiating Handoff to Castle...")
+                    
+                    # Convert raw dict turns to Schema Turns
+                    schema_turns = []
+                    for t in current_session["turns"]:
+                        try:
+                            # Explicitly extract fields to satisfy type checkers and ensure data integrity
+                            schema_turns.append(Turn(
+                                turn_order=int(t.get("turn_order", 0)),
+                                transcript=str(t.get("transcript", "")),
+                                speaker=str(t.get("speaker", "Unknown")),
+                                timestamp=str(t.get("timestamp", ""))
+                            ))
+                        except Exception as e:
+                            logger.warn(f"Skipping invalid turn: {e}")
+
+                    # Use asyncio.to_thread for the synchronous push function if needed, 
+                    # or better: make push_to_semantic_server async? 
+                    # For now, running sync in thread or direct since this is end of session
+                    # We'll use a thread to not block WS
+                    threading.Thread(target=push_to_semantic_server, args=(
+                        str(current_session["student_name"]), 
+                        schema_turns, 
+                        {"source": "live_session"}, # Minimal context for now
+                        current_session["session_id"],
+                        current_session["notes"]
+                    )).start()
+                
                 # Termination handled via stream close in run_streaming_client
                 
     except websockets.exceptions.ConnectionClosed:
@@ -235,17 +268,17 @@ def on_turn(self, event: TurnEvent):
         return
 
     turns_list = current_session.get("turns") or []
-    turn_data = {
+    turn_data: SessionTurn = {
         "turn_order": len(turns_list) + 1,
         "transcript": event.transcript,
         "speaker": "Speaker B", # Heuristic for student
         "words": [{"text": w.text, "start": w.start, "end": w.end, "confidence": w.confidence} for w in (event.words or [])],
         "timestamp": datetime.now().isoformat()
     }
-    if isinstance(current_session["turns"], list):
-        current_session["turns"].append(turn_data)
-    else:
-        current_session["turns"] = [turn_data]
+    
+    # We defined turns as List[SessionTurn], so we can append directly
+    current_session["turns"].append(turn_data)
+
     if main_loop:
         asyncio.run_coroutine_threadsafe(broadcast_message({"message_type": "transcript", **turn_data}), main_loop)
 
@@ -264,10 +297,59 @@ def run_streaming_client():
     
     try:
         client.stream(audio_stream_manager)
+        # --- FINAL UPLOAD (The "Load") ---
+        logger.info("🚚 Delivering the load to Castle...")
+        
+        # We need to calculate duration roughly
+        duration_sec = 0.0
+        session_turns = current_session.get("turns", [])
+        student_name = current_session.get("student_name", "Unknown")
+
+        if session_turns:
+            # session_turns is List[SessionTurn] so we can access keys safely
+            start_t = session_turns[0].get('timestamp')
+            end_t = session_turns[-1].get('timestamp')
+            # Rudimentary duration sync
+            # For now, let's just push what we have.
+            pass
+
+        # Prepare context (minimal for now, "just the tip")
+        context = {
+            "source": "live_session",
+            "student_name": student_name
+            # detailed analysis can be added later
+        }
+
+        # Convert dict turns to Schema Turns
+        real_turns = []
+        if isinstance(session_turns, list):
+            for t in session_turns:
+                try:
+                    real_turns.append(Turn(
+                        turn_order=int(t.get('turn_order', 0)),
+                        transcript=str(t.get('transcript', "")),
+                        speaker=str(t.get('speaker', "Unknown")),
+                        timestamp=str(t.get('timestamp', ""))
+                    ))
+                except Exception as e:
+                    logger.warning(f"Skipping malformed turn: {e}")
+
+        # PUSH
+        push_to_semantic_server(
+            student_name=str(student_name),
+            turns=real_turns, 
+            analysis_context=context,
+            session_id=None, # will generate new
+            notes="Live session upload"
+        )
+        
     except Exception as e:
-        logger.error(f"Stream interrupted: {e}")
+        logger.error(f"❌ Session Error: {e}")
     finally:
-        audio_stream_manager.close()
+        # Cleanup
+        if audio_stream_manager:
+            audio_stream_manager.close()
+        logger.info("🔴 Session Closed.")
         client.disconnect()
         logger.info("🎬 Stream Closed")
 

@@ -1,0 +1,82 @@
+{
+  "session_id": "test_session_001",
+  "student_name": "Maria Test Student",
+  "start_time": "2025-12-20T13:34:00Z",
+  "duration_seconds": 1800,
+  "class_type": "Conversation Practice",
+  "topic": "Present Perfect vs Past Simple",
+  "audio_path": "/path/to/test_audio.wav",
+  "raw_transcript": "Teacher: Hello Maria, how are you today? Student: I am fine thank you. Teacher: Good. Today we are going to practice present perfect and past simple. Do you know the difference? Student: I think present perfect is for experiences and past simple is for completed actions. Teacher: That's correct! Can you give me an example? Student: I have visited Paris last year. Teacher: Close! That should be 'I visited Paris last year' because you specified when. Student: Oh I see, present perfect doesn't use specific time markers. Teacher: Exactly! Now try: Have you ever eaten sushi? Student: Yes, I have eaten sushi last month.",
+  "speaker_segments": [
+    {
+      "speaker": "Teacher",
+      "start": 0.0,
+      "end": 2.5,
+      "text": "Hello Maria, how are you today?"
+    },
+    {
+      "speaker": "Student",
+      "start": 2.5,
+      "end": 4.0,
+      "text": "I am fine thank you."
+    },
+    {
+      "speaker": "Teacher",
+      "start": 4.0,
+      "end": 6.0,
+      "text": "Good. Today we are going to practice present perfect and past simple. Do you know the difference?"
+    },
+    {
+      "speaker": "Student",
+      "start": 6.0,
+      "end": 9.0,
+      "text": "I think present perfect is for experiences and past simple is for completed actions."
+    },
+    {
+      "speaker": "Teacher",
+      "start": 9.0,
+      "end": 10.5,
+      "text": "That's correct! Can you give me an example?"
+    },
+    {
+      "speaker": "Student",
+      "start": 10.5,
+      "end": 13.0,
+      "text": "I have visited Paris last year."
+    },
+    {
+      "speaker": "Teacher",
+      "start": 13.0,
+      "end": 16.0,
+      "text": "Close! That should be 'I visited Paris last year' because you specified when."
+    },
+    {
+      "speaker": "Student",
+      "start": 16.0,
+      "end": 18.5,
+      "text": "Oh I see, present perfect doesn't use specific time markers."
+    },
+    {
+      "speaker": "Teacher",
+      "start": 18.5,
+      "end": 20.0,
+      "text": "Exactly! Now try: Have you ever eaten sushi?"
+    },
+    {
+      "speaker": "Student",
+      "start": 20.0,
+      "end": 22.0,
+      "text": "Yes, I have eaten sushi last month."
+    }
+  ],
+  "metadata": {
+    "quality_rating": 8,
+    "engagement_level": 7,
+    "error_corrections": 2,
+    "breakthrough_moments": [
+      "Student understood time marker difference",
+      "Corrected present perfect usage"
+    ],
+    "teacher_notes": "Good session, student engaged well with grammar concepts"
+  }
+}

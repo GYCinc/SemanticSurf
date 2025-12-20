@@ -93,7 +93,22 @@
 
             <button id="start-btn" class="px-6 py-2 rounded-full bg-red-600/40 hover:bg-red-600/60 text-[10px] font-black uppercase transition-all">Start</button>
             <button id="end-btn" class="hidden px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase transition-all">End</button>
+            <button onclick="toggleWhiteboard()" class="px-4 py-2 rounded-full bg-blue-600/20 hover:bg-blue-600/40 text-[10px] font-black uppercase transition-all border border-blue-500/30">Whiteboard</button>
         </div>
+    </div>
+
+    <!-- Whiteboard Pop-over -->
+    <div id="wb-overlay">
+        <div class="wb-toolbar">
+            <div class="wb-title">Shared Canvas</div>
+            <div class="wb-tools">
+                <button class="wb-btn active">✏️</button>
+                <div class="color-picker active" style="background: #fff;" onclick="currentColor='#fff'"></div>
+                <div class="color-picker" style="background: #ef4444;" onclick="currentColor='#ef4444'"></div>
+                <div class="color-picker" style="background: #3b82f6;" onclick="currentColor='#3b82f6'"></div>
+            </div>
+        </div>
+        <div id="wb-canvas-container"></div>
     </div>
 
     <div id="transcript-feed" class="absolute inset-0 top-20 px-12 py-10 overflow-y-auto">
@@ -102,6 +117,11 @@
             <div class="text-xs tracking-[0.4em] uppercase mt-2">Select Student to Initialize Bedrock</div>
         </div>
     </div>
+
+    <!-- Liveblocks SDK -->
+    <script src="https://unpkg.com/@liveblocks/client"></script>
+    <script src="ui/whiteboard.js"></script>
+    <link rel="stylesheet" href="ui/whiteboard.css">
 
     <script>
         const electron = window.electron;

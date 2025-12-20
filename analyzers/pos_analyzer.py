@@ -1,6 +1,5 @@
 import logging
-import collections
-from typing import Any
+from typing import Optional, Any
 
 logger = logging.getLogger("POSAnalyzer")
 
