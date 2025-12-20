@@ -1,4 +1,4 @@
-# Semantic Surfer - Installation Guide
+# Semantic Server - Installation Guide
 
 ## Quick Start (Development Mode)
 
@@ -22,8 +22,8 @@ chmod +x build-app.sh
 ```
 
 This creates:
-- `dist/Semantic Surfer-1.0.0.dmg` - Installer
-- `dist/mac/Semantic Surfer.app` - The actual app
+- `dist/Semantic Server-1.0.0.dmg` - Installer
+- `dist/mac/Semantic Server.app` - The actual app
 
 ### 3. Install to Applications
 ```bash
@@ -32,16 +32,16 @@ open dist/Semantic\ Surfer-1.0.0.dmg
 # Then drag to Applications folder
 
 # Option B: Copy directly
-cp -r "dist/mac/Semantic Surfer.app" /Applications/
+cp -r "dist/mac/Semantic Server.app" /Applications/
 ```
 
 ### 4. Launch the App
 ```bash
 # From Spotlight
-# Press Cmd+Space, type "Semantic Surfer"
+# Press Cmd+Space, type "Semantic Server"
 
 # Or from Terminal
-open -a "Semantic Surfer"
+open -a "Semantic Server"
 
 # Or from Applications folder
 # Double-click in Finder
@@ -76,7 +76,7 @@ Or keep it running in the background:
 ./start.sh
 
 # Terminal 2: Launch app (if installed)
-open -a "Semantic Surfer"
+open -a "Semantic Server"
 
 # OR: Use the combined launcher
 ./start-electron.sh
@@ -98,7 +98,7 @@ open -a "Semantic Surfer"
 ### "App can't be opened" (macOS Security)
 ```bash
 # Remove quarantine flag
-xattr -cr "/Applications/Semantic Surfer.app"
+xattr -cr "/Applications/Semantic Server.app"
 
 # Or: System Preferences > Security & Privacy > Open Anyway
 ```
@@ -119,7 +119,7 @@ npm install
 ## File Structure
 
 ```
-Semantic Surfer/
+Semantic Server/
 ├── electron-main.js       # Desktop app entry point
 ├── viewer.html            # UI
 ├── main.py               # Python backend
@@ -127,9 +127,9 @@ Semantic Surfer/
 ├── build-app.sh          # Build script
 ├── start-electron.sh     # Combined launcher
 └── dist/                 # Built apps (after build)
-    ├── Semantic Surfer-1.0.0.dmg
+    ├── Semantic Server-1.0.0.dmg
     └── mac/
-        └── Semantic Surfer.app
+        └── Semantic Server.app
 ```
 
 ## Advanced: Auto-Start Backend
@@ -146,7 +146,7 @@ For now, the two-process approach is simpler and more flexible.
 
 ```bash
 # Remove app
-rm -rf "/Applications/Semantic Surfer.app"
+rm -rf "/Applications/Semantic Server.app"
 
 # Remove build files
 rm -rf dist node_modules

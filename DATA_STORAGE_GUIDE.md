@@ -1,4 +1,4 @@
-# Semantic Surfer - Data Storage Guide
+# Semantic Server - Data Storage Guide
 
 ## Where Everything Gets Saved
 
@@ -31,7 +31,7 @@
 
 ```json
 {
-  "app_name": "Semantic Surfer",
+  "app_name": "Semantic Server",
   "session_id": "abc123",
   "speaker": "Aaron",
   "start_time": "2024-10-30T14:30:15.123Z",
@@ -89,7 +89,7 @@ Edit [`config.json`](config.json:1):
 ```json
 {
   "speaker_name": "Aaron",  // Change to your name
-  "app_name": "Semantic Surfer"
+  "app_name": "Semantic Server"
 }
 ```
 

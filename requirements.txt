@@ -5,6 +5,5 @@ openrouter>=0.1.1
 psutil
 pyaudio
 python-dotenv
-supabase
 textblob
 websockets

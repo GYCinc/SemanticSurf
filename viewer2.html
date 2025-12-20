@@ -2,292 +2,185 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Semantic Server - Tactile Glass Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Surfer | Crimson Glass</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-
     <style>
-        :root {
-            --glass-bg: rgba(30, 30, 35, 0.4);
-            --glass-border: rgba(255, 255, 255, 0.12);
-            --neo-shadow-dark: rgba(0, 0, 0, 0.5);
-            --neo-shadow-light: rgba(255, 255, 255, 0.02);
-            --accent-emerald: #10b981;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
         body {
-            margin: 0;
-            background: #020205;
+            background-color: #030303;
+            color: #FFFFFF;
             font-family: 'Inter', sans-serif;
-            color: #ffffff;
+            margin: 0;
             overflow: hidden;
             -webkit-font-smoothing: antialiased;
         }
-        
-        .main-blur-bg {
-            /* Richer gradient that doesn't turn black too fast */
-            background: radial-gradient(circle at 20% 20%, #6a0a0a 0%, #1a0505 50%, #050505 100%);
-            height: 100vh;
-            width: 100vw;
-        }
-
-        /* TACTILE GLASS NEOMORPHISM (COMPACT) */
-        .glass-neo-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(40px) saturate(160%);
-            -webkit-backdrop-filter: blur(40px) saturate(160%);
-            
-            border: 1px solid var(--glass-border);
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            
-            box-shadow: 
-                8px 8px 16px var(--neo-shadow-dark),
-                -4px -4px 12px var(--neo-shadow-light);
-            
-            border-radius: 1.5rem; /* Smoother, tighter rounding */
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* SIDEBAR (Vibrant Gradient) */
-        .sidebar-glass {
-            background: linear-gradient(180deg, rgba(40, 10, 10, 0.6) 0%, rgba(10, 10, 15, 0.8) 100%);
-            backdrop-filter: blur(60px);
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* COMPACT TRANSCRIPT TEXT */
-        .transcript-text {
-            font-size: 1rem; /* Reduced for 20-line density */
-            line-height: 1.5;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .marked-word {
-            color: var(--accent-emerald) !important;
-            font-weight: 700 !important;
-            text-decoration: underline;
-            text-decoration-thickness: 2px;
-            text-underline-offset: 4px;
-        }
-
-        .marked-turn {
-            border-left: 5px solid var(--accent-emerald) !important;
-            background: rgba(16, 185, 129, 0.08) !important;
-        }
-
-        .traffic-light-pad { padding-left: 110px; }
-        
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
 
         .no-drag { -webkit-app-region: no-drag; }
         .drag { -webkit-app-region: drag; }
+
+        .app-header {
+            background: rgba(10, 10, 10, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px 0 120px; /* Strong offset for stoplights */
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #eab308;
+            margin-right: 8px;
+        }
+        .status-dot.active { background-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
+
+        .wpm-box {
+            border-left: 1px solid rgba(255,255,255,0.1);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .word-token {
+            display: inline-block;
+            padding: 2px 4px;
+            margin: 0 2px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.05);
+            cursor: pointer;
+        }
+        .word-token.marked { background: rgba(220, 20, 60, 0.4); color: #ff4d4d; }
+
+        .turn-container { margin-bottom: 24px; }
+        .speaker-label { font-weight: 900; font-size: 0.75rem; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden">
-    <div id="root" class="h-full w-full"></div>
+<body>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-        const { motion, AnimatePresence } = window.Motion;
+    <div class="drag app-header">
+        <div class="flex items-center">
+            <div id="connection-status" class="status-dot"></div>
+            <span class="text-[10px] font-black tracking-widest opacity-50">SEMANTIC SURFER</span>
+        </div>
+        
+        <div class="no-drag flex items-center gap-6">
+            <select id="student-selector" class="bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-[10px] font-black text-white/90 uppercase outline-none cursor-pointer">
+                <option value="" disabled selected>Loading Students...</option>
+            </select>
 
-        const Word = ({ word, onClick }) => (
-            <motion.span
-                whileHover={{ scale: 1.2, y: -1, color: "#fff" }}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onClick(word);
-                }}
-                className={`inline-block px-0.5 cursor-pointer rounded transition-all duration-150 ${word.marked ? 'marked-word' : 'opacity-100'}`}
-            >
-                {word.text}{' '}
-            </motion.span>
-        );
+            <div class="wpm-box">
+                <span id="wpm-display" class="font-black text-lg">0</span>
+                <span class="text-[7px] font-black opacity-30 uppercase">WPM</span>
+            </div>
 
-        const Turn = ({ turn, onWordClick, onLineClick, studentName }) => (
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -4, scale: 1.005 }}
-                className={`p-4 mb-3 glass-neo-card ${turn.marked ? 'marked-turn' : ''}`}
-                onClick={() => onLineClick(turn)}
-            >
-                <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-3">
-                        <span className={`text-[9px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full border ${turn.speaker === 'Aaron' ? 'text-red-400 border-red-500/20 bg-red-500/5' : 'text-sky-400 border-sky-500/20 bg-sky-500/5'}`}>
-                            {turn.speaker === 'Aaron' ? 'Tutor' : (studentName || 'Student')}
-                        </span>
-                        {turn.marked && <span className="text-[8px] text-emerald-400 font-bold bg-emerald-500/20 px-2 py-0.5 rounded-full tracking-tighter">SAVED</span>}
-                    </div>
-                    <span className="text-[9px] opacity-20 font-mono">{new Date(turn.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
-                </div>
+            <div class="flex flex-col items-end">
+                <span class="text-[7px] font-black opacity-30 uppercase">Timer</span>
+                <div id="session-timer" class="text-xs font-mono font-bold text-white/60">00:00:00</div>
+            </div>
+
+            <button id="start-btn" class="px-6 py-2 rounded-full bg-red-600/40 hover:bg-red-600/60 text-[10px] font-black uppercase transition-all">Start</button>
+            <button id="end-btn" class="hidden px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase transition-all">End</button>
+        </div>
+    </div>
+
+    <div id="transcript-feed" class="absolute inset-0 top-20 px-12 py-10 overflow-y-auto">
+        <div id="empty-msg" class="h-full flex flex-col items-center justify-center opacity-30">
+            <div class="text-4xl font-black uppercase">Engine Ready</div>
+            <div class="text-xs tracking-[0.4em] uppercase mt-2">Select Student to Initialize Bedrock</div>
+        </div>
+    </div>
+
+    <script>
+        const electron = window.electron;
+        const selector = document.getElementById('student-selector');
+        const feed = document.getElementById('transcript-feed');
+        const emptyMsg = document.getElementById('empty-msg');
+        const status = document.getElementById('connection-status');
+        const startBtn = document.getElementById('start-btn');
+        const endBtn = document.getElementById('end-btn');
+        const timerDisplay = document.getElementById('session-timer');
+        const wpmDisplay = document.getElementById('wpm-display');
+
+        let ws = null;
+        let startTime = null;
+
+        function connect() {
+            ws = new WebSocket('ws://localhost:8765');
+            ws.onopen = () => {
+                status.classList.add('active');
+                console.log('✅ Connected');
+                ws.send(JSON.stringify({ message_type: 'get_students' }));
+            };
+            ws.onclose = () => {
+                status.classList.remove('active');
+                setTimeout(connect, 2000);
+            };
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                console.log('Message:', data.message_type);
                 
-                <div className="transcript-text">
-                    {turn.words?.length > 0 
-                        ? turn.words.map((w, i) => <Word key={i + w.text + w.start_ms} word={w} onClick={(wd) => onWordClick(wd, turn)} />)
-                        : <span>{turn.transcript || turn.text}</span>
-                    }
-                </div>
-            </motion.div>
-        );
-
-        const App = () => {
-            const [status, setStatus] = useState("OFF");
-            const [ws, setWs] = useState(null);
-            const [session, setSession] = useState({ turns: [], notes: "", student_name: "Unknown", wpm: 0 });
-            const [students, setStudents] = useState([]);
-            const [markedNotes, setMarkedNotes] = useState([]);
-            const scrollRef = useRef(null);
-
-            useEffect(() => {
-                if (scrollRef.current) {
-                    scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+                if (data.message_type === 'student_list' && data.students) {
+                    selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
+                    data.students.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name; opt.textContent = name;
+                        selector.appendChild(opt);
+                    });
+                } else if (data.message_type === 'session_start') {
+                    startTime = new Date();
+                    emptyMsg.style.display = 'none';
+                    startBtn.classList.add('hidden');
+                    endBtn.classList.remove('hidden');
+                    setInterval(() => {
+                        if (!startTime) return;
+                        const d = new Date() - startTime;
+                        timerDisplay.textContent = new Date(d).toISOString().substr(11, 8);
+                    }, 1000);
+                } else if (data.message_type === 'transcript') {
+                    const div = document.createElement('div');
+                    div.className = 'turn-container';
+                    div.innerHTML = `<div class="speaker-label">${data.speaker}</div><div class="text-xl font-bold"></div>`;
+                    const content = div.querySelector('.text-xl');
+                    if (data.words) {
+                        data.words.forEach(w => {
+                            const span = document.createElement('span');
+                            span.className = 'word-token';
+                            span.textContent = w.text;
+                            span.onclick = () => {
+                                span.classList.toggle('marked');
+                                electron.saveCardToSanity({ category: 'RECAST', detectedTrigger: w.text, explanation: data.transcript });
+                            };
+                            content.appendChild(span);
+                        });
+                    } else { content.textContent = data.transcript; }
+                    feed.appendChild(div);
+                    feed.scrollTop = feed.scrollHeight;
+                } else if (data.wpm) {
+                    wpmDisplay.textContent = Math.round(data.wpm);
                 }
-            }, [session.turns]);
-
-            useEffect(() => {
-                const hostname = window.location.hostname || 'localhost';
-                const socket = new WebSocket(`ws://${hostname}:8765`);
-                socket.onopen = () => { setStatus("ON"); setWs(socket); };
-                socket.onclose = () => setStatus("OFF");
-                socket.onmessage = (e) => {
-                    const msg = JSON.parse(e.data);
-                    if (msg.message_type === "student_list") setStudents(msg.students);
-                    if (msg.message_type === "transcript") {
-                        setSession(prev => ({
-                            ...prev, 
-                            turns: [...prev.turns, { ...msg, words: msg.words || [] }],
-                            wpm: msg.speaking_rate_wpm || prev.wpm
-                        }));
-                    }
-                };
-                return () => socket.close();
-            }, []);
-
-            const markWord = (word, turn) => {
-                setSession(prev => {
-                    const newTurns = [...prev.turns];
-                    const idx = newTurns.findIndex(t => t.turn_order === turn.turn_order);
-                    if (idx !== -1) {
-                        const target = { ...newTurns[idx] };
-                        target.words = target.words.map(w => (w.text === word.text && w.start_ms === word.start_ms) ? { ...w, marked: true } : w);
-                        newTurns[idx] = target;
-                    }
-                    return { ...prev, turns: newTurns };
-                });
-                setMarkedNotes(p => [{ id: Date.now(), text: word.text, type: 'VOCAB' }, ...p]);
-                ws?.send(JSON.stringify({ message_type: "mark_update", turn_order: turn.turn_order, mark_type: "vocabulary", text: word.text, timestamp: new Date().toISOString() }));
-                window.electron?.saveCardToSanity({ category: 'VOCAB_GAP', detectedTrigger: word.text, explanation: `Context: "${turn.transcript || turn.text}"` });
             };
+        }
 
-            const markLine = (turn) => {
-                if (turn.marked) return;
-                setSession(prev => ({ ...prev, turns: prev.turns.map(t => t.turn_order === turn.turn_order ? { ...t, marked: true } : t) }));
-                setMarkedNotes(p => [{ id: Date.now(), text: turn.transcript || turn.text, type: 'GRAMMAR' }, ...p]);
-                ws?.send(JSON.stringify({ message_type: "mark_update", turn_order: turn.turn_order, mark_type: "expression", timestamp: new Date().toISOString() }));
-                window.electron?.saveCardToSanity({ category: 'GRAMMAR_ERR', detectedTrigger: turn.transcript || turn.text, explanation: 'Full turn' });
-            };
-
-            return (
-                <div class="h-screen w-screen flex flex-col main-blur-bg text-white relative overflow-hidden">
-                    <header class="h-20 drag flex items-center justify-between px-10 z-50 border-b border-white/5">
-                        <div class="flex items-center gap-5 traffic-light-pad">
-                            <div class={`w-2 h-2 rounded-full ${status === 'ON' ? 'bg-emerald-500 shadow-[0_0_15px_#10b981]' : 'bg-red-500 shadow-[0_0_15px_#ef4444]'}`} />
-                            <h1 class="text-[9px] font-black tracking-[0.8em] uppercase opacity-40">Semantic Server</h1>
-                        </div>
-
-                        <div class="flex items-center gap-10 no-drag">
-                            <div class="flex flex-col items-end">
-                                <span class="text-[8px] font-black tracking-widest text-slate-500 uppercase">Velocity</span>
-                                <div class="flex items-baseline gap-1">
-                                    <span class="text-2xl font-bold tracking-tighter text-red-500">{Math.round(session.wpm)}</span>
-                                    <span class="text-[9px] font-black opacity-20">WPM</span>
-                                </div>
-                            </div>
-
-                            <select 
-                                class="bg-white/5 border border-white/10 rounded-xl px-4 py-1.5 text-xs font-bold text-white outline-none cursor-pointer"
-                                value={session.student_name}
-                                onChange={(e) => {
-                                    setSession(p => ({...p, student_name: e.target.value}));
-                                    ws?.send(JSON.stringify({ message_type: "start_session", student_name: e.target.value }));
-                                }}
-                            >
-                                <option value="Unknown" disabled>Select Profile</option>
-                                {students.map(s => <option key={s} value={s} class="bg-slate-900">{s}</option>)}
-                            </select>
-
-                            <button 
-                                onClick={() => ws?.send(JSON.stringify({ message_type: "end_session" }))}
-                                class="h-10 px-8 bg-red-600/20 border border-red-500/30 text-white rounded-full text-[9px] font-black tracking-[0.3em] uppercase hover:bg-red-600/40 transition-all"
-                            >
-                                Terminate
-                            </button>
-                        </div>
-                    </header>
-
-                    <div class="flex flex-1 overflow-hidden">
-                        <main ref={scrollRef} class="flex-1 overflow-y-auto p-10 pt-6 custom-scrollbar scroll-smooth">
-                            <div class="max-w-3xl mx-auto">
-                                <AnimatePresence mode="popLayout">
-                                    {session.turns.map((t, i) => (
-                                        <Turn key={t.turn_order || i} turn={t} onWordClick={markWord} onLineClick={markLine} studentName={session.student_name} />
-                                    ))}
-                                </AnimatePresence>
-                                <div class="h-40" />
-                            </div>
-                        </main>
-
-                        <aside class="w-[24rem] sidebar-glass flex flex-col z-40">
-                            <div class="p-8 border-b border-white/5">
-                                <h2 class="text-[10px] font-black tracking-[0.4em] text-emerald-400 uppercase">Knowledge</h2>
-                                <p class="text-[8px] text-slate-500 font-black mt-1 uppercase tracking-widest opacity-50">Capture Stream</p>
-                            </div>
-
-                            <div class="flex-1 overflow-y-auto p-6 space-y-4">
-                                <AnimatePresence initial={false}>
-                                    {markedNotes.map(note => (
-                                        <motion.div 
-                                            key={note.id}
-                                            layout
-                                            initial={{ opacity: 0, x: 40 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            className="p-4 glass-neo-card border-white/5 group"
-                                        >
-                                            <div class="flex justify-between items-start mb-2">
-                                                <span class="text-[8px] font-black bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full tracking-widest uppercase">{note.type}</span>
-                                                <button onClick={() => setMarkedNotes(p => p.filter(x => x.id !== n.id))} class="text-white/10 hover:text-white text-xl leading-none">×</button>
-                                            </div>
-                                            <p class="text-sm text-white font-bold leading-snug">{note.text}</p>
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            </div>
-
-                            <div class="p-8 bg-black/40">
-                                <textarea
-                                    class="w-full h-40 bg-transparent text-lg font-bold text-white placeholder:text-slate-800 outline-none resize-none leading-relaxed"
-                                    placeholder="Executive Notes..."
-                                    value={session.notes}
-                                    onChange={(e) => {
-                                        setSession(p => ({...p, notes: e.target.value}));
-                                        ws?.send(JSON.stringify({ message_type: "update_notes", notes: e.target.value }));
-                                    }}
-                                />
-                            </div>
-                        </aside>
-                    </div>
-                </div>
-            );
+        startBtn.onclick = () => {
+            if (!selector.value) return alert('Select Student');
+            ws.send(JSON.stringify({ message_type: 'start_session', student_name: selector.value }));
         };
+        endBtn.onclick = () => ws.send(JSON.stringify({ message_type: 'end_session' }));
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        connect();
     </script>
 </body>
 </html>

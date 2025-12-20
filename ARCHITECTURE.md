@@ -1,92 +1,65 @@
-# Semantic Surfer Architecture
+# Semantic Server Architecture: Many Castles Edition
 
 ## Overview
-Semantic Surfer is a precision desktop application for real-time ESL tutoring. It captures audio, performs tiered linguistic analysis (Local Python + LLM Gateway), and delivers curated artifacts to the **GitEnglishHub** platform.
+Semantic Server is a precision desktop tool for capturing raw ESL tutoring data. It operates within a "Many Castles" ecosystem: Local data capture (The CaptureEngine) feeds into Student-Isolated AI Instances (The Personal TheGurus) hosted on Railway.
 
 ---
 
-## 🏗️ Core Philosophy: "Happens" vs. "Exists"
-
-- **Supabase (The Event Stream):** Stores what *happens*—raw transcripts, temporal turn-by-turn logs, and session metadata. This is your high-fidelity historical record.
-- **Sanity (The Knowledge Base):** Stores what *exists*—curated Analysis Cards, marked Vocabulary Gaps, and Grammar Insights. These are the permanent pedagogical artifacts.
-
----
-
-## 🔄 Unified Data Flow
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      SEMANTIC SURFER (Desktop)                      │
-├─────────────────────────────────────────────────────────────────────┤
-│ 1. Audio Capture (High-Gain Mono Mic Stream)                        │
-│ 2. Real-time AssemblyAI Transcription (v3 Streaming API)            │
-│ 3. LIVE: WPM, Pauses, and Tutor Marks captured in Viewer UI         │
-│ 4. ON SESSION END:                                                  │
-│    a. High-Definition Batch Diarization (speaker_labels=True)       │
-│    b. Local NLP Tier (POS, N-grams, Verbs, Comparative Ratios)      │
-│    c. LLM Gateway Synthesis (Gemini 1.5 Pro + Full Data Context)     │
-│ 5. Results → GitEnglishHub API (/api/mcp)                           │
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      GITENGLISHHUB (API / Petty Dantic)             │
-├─────────────────────────────────────────────────────────────────────┤
-│ Centralized logic handler for the platform:                         │
-│ - ingest.createSession → Supabase (The Log)                         │
-│ - Analysis Cards → Sanity CMS (The Artifacts)                       │
-│ - Corpus Staging → Hub Inbox (Awaiting Manual Curation)             │
-└─────────────────────────────────────────────────────────────────────┘
-```
+## 🏗️ The Triple-Transcript Bedrock
+Every session creates three local artifacts in `sessions/[session_id]/`:
+1.  **`_raw.txt`**: The conversation as it happened.
+2.  **`_sentences.json`**: Diarized sentence segments.
+3.  **`_words.json`**: The **Authoritative** word array (Timing, Confidence, Speaker).
 
 ---
 
-## 🧠 Tiered Analysis Pipeline
-
-Semantic Surfer avoids hallucinations by grounding the LLM in deterministic local data.
-
-### Phase 1: Local Deterministic Analyzers (Python)
-*Calculated before the LLM call to provide hard grounding data.*
-
-| Component | Logic | Output for LLM |
-|-----------|-------|----------------|
-| `POSAnalyzer` | TextBlob / NLTK | Raw counts and normalized ratios (Noun/Verb density). |
-| `NgramAnalyzer` | Punctuation-stripped bigrams | Naturalness Score (grounded in native baseline). |
-| `VerbAnalyzer` | Transitivity Lookup (14k verbs) | List of irregular verbs and usage probabilities. |
-| `ArticleAnalyzer` | Phonetic rule matching | List of 'a/an' mismatches with phonetic explanations. |
-| `Comparative` | Tutor vs. Student | **Tutor Overlap %** and Lexical Calibration ratio. |
-| `Session` | SLA / CAF Framework | Complexity (MLT), Accuracy, and Fluency (WPM). |
-
-### Phase 2: LLM Synthesis (LLM Gateway)
-*The system prompt is dynamically injected with the results from Phase 1.*
-
-- **Live Model:** `gemini-1.5-pro` (Optimized for speed/depth balance).
-- **Batch Model:** `claude-sonnet-4-5` (Optimized for maximum linguistic depth).
-- **Context Injection:** Raw Transcript + **Tutor Session Notes** + Phase 1 Context Bundle.
-- **Output:** Structured JSON containing CEFR proficiency estimates and prioritized remedial tasks.
+## 🏰 The "Many Castles" Protocol (Personal Instances)
+- **Isolation:** Every student is assigned a dedicated AI Instance (Service) on Railway.
+- **Identity:** Instances are student-bound via environment variables (e.g., `STUDENT_ID`). 
+- **Contamination Zero:** Memory and local state are never shared between student instances.
+- **Scaling:** One "Master Blueprint" container is copied (replicated) for each new castle.
 
 ---
 
-## 💻 System Components
+## 📊 The Analysis Pipeline
 
-### 1. Python Backend (`main.py`)
-- Orchestrates the AssemblyAI stream and the local analysis suite.
-- **ID Management:** Uses `session_id` throughout to align with AssemblyAI standards.
-- **Egress:** `send_to_gitenglish()` is the sole point of contact for the Hub API.
+### 1. The Hard Numbers (Local Analysis)
+*   **Component:** `SessionAnalyzer` (`analyzers/session_analyzer.py`)
+*   **Role:** The Objective Statistician.
+*   **Function:** Runs *before* any AI involvement. It processes the raw transcripts using `NLTK` and `TextBlob` to generate:
+    *   **CAF Metrics:** Complexity, Accuracy, Fluency (SLA Framework).
+    *   **Vocabulary Stats:** Unique lemmas, lexical density, content word ratio.
+    *   **Pattern Detection:** N-grams (formulaic sequences), pauses, and hesitation markers.
+    *   **Comparatives:** Student vs. Teacher talk time, WPM, and vocabulary overlap.
 
-### 2. Electron Frontend (`viewer2.html`)
-- **Aesthetic:** "Crimson Glass" Edition—Johnny Ive inspired glassmorphism with neomorphic depth.
-- **Interactions:** Word-level marking (Vocab Gap) and Turn-level marking (Grammar).
-- **Lifting UI:** Staggered Framer Motion animations for high-fidelity responsiveness.
+### 2. The Cognitive Layer (Distillation)
+*   **Component:** `The Guru` (`analyzers/lm_gateway.py`)
+*   **Role:** The Subjective Coach.
+*   **Function:** Synthesizes the "Hard Numbers" and the raw transcript using the `UNIVERSAL_GURU_PROMPT.txt`.
+*   **Output:** Generates qualitative feedback, identifies "Action Items," and flags "Marked Expressions" for review.
+
+### 3. The Enforcer (Validation)
+*   **Component:** `Petty Dantic` (`analyzers/schemas.py`)
+*   **Role:** The Bureaucrat.
+*   **Function:** A rigid Pydantic validation layer that ensures all data leaving the Castle adheres to the "Holy Schema." It prevents structural drift and ensures clean data for the PCL.
 
 ---
 
-## 🛠️ Environment & Security
-
-- `ASSEMBLYAI_API_KEY`: API authentication for all AI services.
-- `MCP_SECRET`: Critical shared secret for GitEnglishHub API communication.
-- `GITENGLISH_API_BASE`: Target URL for all unified data sync.
+## 🔄 The Personal Language Corpus (PCL)
+- **Engine:** `StudentCorpusEngine` counts student production from `_words.json`.
+- **Bedrock (Supabase):** The `word_exposure` table stores the student's lifelong linguistic record.
+- **Protocol:** All PCL updates are sent as **PENDING**. They require explicit Manager approval in the GitEnglish Hub before becoming permanent.
 
 ---
 
-*This document is the authoritative blueprint for the Semantic Surfer system. Revision: Dec 2025.*
+## 🛠️ Tech Stack & Dependencies
+*   **Ingestion:** Python `pyaudio` + `websockets` (Local).
+*   **Transcription:** AssemblyAI (Streaming & Batch).
+*   **Server:** FastAPI (`castle_server.py`) on Railway.
+*   **Intelligence:** Gemini 1.5 Pro (via OpenRouter/Gateway).
+*   **Storage:** Supabase (PostgreSQL).
+*   **NLP:** NLTK, TextBlob.
+
+---
+
+*Authored by The Manager. Definitive Blueprint for the Many Castles Pipeline.*

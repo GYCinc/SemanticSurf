@@ -1,8 +1,8 @@
-# Semantic Surfer - Integration Status
+# Semantic Server - Integration Status
 
 ## Unified Platform Alignment
 
-Semantic Surfer is now 100% aligned with the **GitEnglishHub "Petty Dantic" API**. All direct database mutations have been removed in favor of a centralized server-side registry.
+Semantic Server is now 100% aligned with the **GitEnglishHub "Petty Dantic" API**. All direct database mutations have been removed in favor of a centralized server-side registry.
 
 ---
 
@@ -10,10 +10,7 @@ Semantic Surfer is now 100% aligned with the **GitEnglishHub "Petty Dantic" API*
 
 | Data Type | Role | Logic | Final Destination |
 |-----------|------|-------|-------------------|
-| **Transcripts** | Event Log | "What Happened" | Supabase (`student_sessions`) |
 | **Analysis Cards** | Artifact | "What Exists" | Sanity CMS |
-| **Session Notes** | Context | "Executive Summary" | Supabase + LLM Input |
-| **Student Corpus** | Knowledge | "Learned Items" | Supabase (via Inbox Curation) |
 
 ---
 
@@ -28,7 +25,6 @@ Semantic Surfer is now 100% aligned with the **GitEnglishHub "Petty Dantic" API*
 
 ## 3. Student Synchronization
 
-- **Priority 1:** Supabase `students` table.
 - **Priority 2 (Fallback):** Local `student_profiles.json` cache.
 - **Reliability:** `main.py` utilizes a `try-except` fallback to bypass macOS `certifi`/SSL issues.
 - **Sanitization:** Auto-filters "Test", "Unknown", "null", and system accounts.
@@ -54,4 +50,4 @@ Semantic Surfer is now 100% aligned with the **GitEnglishHub "Petty Dantic" API*
 
 ---
 
-*This document serves as the final integration audit for the Semantic Surfer system.*
+*This document serves as the final integration audit for the Semantic Server system.*

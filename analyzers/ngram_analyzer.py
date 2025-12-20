@@ -65,7 +65,8 @@ class NgramAnalyzer:
         Returns frequency counts of bigrams in the text.
         """
         bigrams = self.get_bigrams(text)
-        return dict(Counter(bigrams))
+        # Join tuples into strings "word1 word2" to match dict[str, int] signature
+        return {f"{bg[0]} {bg[1]}": count for bg, count in Counter(bigrams).items()}
 
     def get_unusual_bigrams(self, text: str) -> list[tuple[str, str]]:
         """

@@ -1,6 +1,6 @@
 {
   "name": "semantic-surfer",
-  "productName": "Semantic Surfer",
+  "productName": "Semantic Server",
   "version": "1.0.0",
   "description": "ESL Transcript Viewer - Desktop App",
   "main": "electron-main.js",
@@ -20,7 +20,7 @@
   "license": "MIT",
   "build": {
     "appId": "com.semanticsurfer.app",
-    "productName": "Semantic Surfer",
+    "productName": "Semantic Server",
     "mac": {
       "category": "public.app-category.education",
       "icon": "build/icon.icns",
@@ -30,7 +30,7 @@
       ]
     },
     "dmg": {
-      "title": "Semantic Surfer",
+      "title": "Semantic Server",
       "icon": "build/icon.icns"
     },
     "files": [

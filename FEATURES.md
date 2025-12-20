@@ -1,4 +1,4 @@
-# 🎯 Semantic Surfer - Features
+# 🎯 Semantic Server - Features
 
 ## Native "Crimson Glass" UI ✨
 - **Johnny Ive Aesthetic:** High-end glassmorphism with deep `blur-3xl` backgrounds and rounded `3xl` corners.

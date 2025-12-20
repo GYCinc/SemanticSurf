@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 logger = logging.getLogger("ComparativeAnalyzer")
 
@@ -127,7 +127,7 @@ class ComparativeAnalyzer:
 | Word Count          | {tutor['word_count']} | {student['word_count']} |          |
 """
 
-    def compare(self, student_data: dict, tutor_data: dict) -> dict:
+    def compare(self, student_data: dict[str, Any], tutor_data: dict[str, Any]) -> dict[str, Any]:
         """
         Alias for pipeline compatibility. Extracts text and runs analyze().
         """

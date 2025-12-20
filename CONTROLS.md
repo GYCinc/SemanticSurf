@@ -1,4 +1,4 @@
-# Semantic Surfer - Controls Reference
+# Semantic Server - Controls Reference
 
 ## Interaction Model: Mouse & Touch
 

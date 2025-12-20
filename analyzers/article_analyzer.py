@@ -1,13 +1,18 @@
 import re
 import logging
-from typing import List, Dict, Optional
+from typing import final
 
 logger = logging.getLogger("ArticleAnalyzer")
 
+@final
 class ArticleAnalyzer:
     """
-    Analyzes text for common English article errors (a/an mismatches).
+    Analyzes text specifically for Indefinite Article errors (a vs an).
     """
+
+    vowels: set[str]
+    an_exceptions: list[str]
+    a_exceptions: list[str]
 
     def __init__(self):
         # Identify vowel sounds (simplified for MVP)
@@ -16,12 +21,15 @@ class ArticleAnalyzer:
         self.an_exceptions = ["hour", "honest", "heir", "honor"] # Words starting with H but vowel sound
         self.a_exceptions = ["university", "united", "unique", "useful", "usage", "eu", "one"] # Vowel start but consonant sound
 
-    def analyze(self, text: str) -> List[Dict[str, str]]:
-        errors = []
+    def analyze(self, text: str) -> list[dict[str, str]]:
+        """
+        Analyzes text specifically for Indefinite Article errors (a vs an).
+        """
+        errors: list[dict[str, str]] = []
         
         # Regex to find "a [word]" or "an [word]" case-insensitive
         # \b ensures word boundary
-        matches = re.finditer(r'\b(a|an)\s+([a-z]+)\b', text, re.IGNORECASE)
+        matches = re.finditer(r"\b(a|an)\s+(\w+)\b", text, re.IGNORECASE)
         
         for match in matches:
             article = match.group(1).lower()
@@ -40,7 +48,7 @@ class ArticleAnalyzer:
             elif article == "an" and not needs_an:
                 errors.append({
                     "item": f"{article} {next_word}",
-                    "match": f"{article} {next_word}", # Ensure 'match' exists for main.py extension
+                    "match": f"{article} {next_word}",
                     "correction": f"a {next_word}",
                     "explanation": f"Use 'a' before '{next_word}' because it starts with a consonant sound."
                 })
@@ -51,6 +59,8 @@ class ArticleAnalyzer:
         """
         Determines if a word starts with a vowel sound.
         """
+        if not word: return False
+        
         # Specific exceptions
         if word in self.an_exceptions:
             return True

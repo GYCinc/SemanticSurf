@@ -1,7 +1,7 @@
 #!/bin/bash
-# Create app icon for Semantic Surfer
+# Create app icon for Semantic Server
 
-echo "Creating Semantic Surfer icon..."
+echo "Creating Semantic Server icon..."
 
 # Create iconset directory
 mkdir -p SemanticSurfer.iconset

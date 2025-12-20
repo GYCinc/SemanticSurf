@@ -1,0 +1,185 @@
+{
+  "metadata": {
+    "source": "Manual Seed (Cold Start)",
+    "version": "1.0",
+    "count": 50
+  },
+  "patterns": {
+    "#RT": [
+      {
+        "incorrect": "depend of",
+        "correct": "depend on"
+      },
+      {
+        "incorrect": "married with",
+        "correct": "married to"
+      },
+      {
+        "incorrect": "interested on",
+        "correct": "interested in"
+      },
+      {
+        "incorrect": "arrive to",
+        "correct": "arrive at"
+      },
+      {
+        "incorrect": "spend money in",
+        "correct": "spend money on"
+      }
+    ],
+    "#MD": [
+      {
+        "incorrect": "I have car",
+        "correct": "I have a car"
+      },
+      {
+        "incorrect": "in morning",
+        "correct": "in the morning"
+      },
+      {
+        "incorrect": "he is teacher",
+        "correct": "he is a teacher"
+      },
+      {
+        "incorrect": "sun is hot",
+        "correct": "the sun is hot"
+      },
+      {
+        "incorrect": "play piano",
+        "correct": "play the piano"
+      }
+    ],
+    "#TV": [
+      {
+        "incorrect": "I have seen him yesterday",
+        "correct": "I saw him yesterday"
+      },
+      {
+        "incorrect": "I am living here since 2010",
+        "correct": "I have lived here since 2010"
+      },
+      {
+        "incorrect": "If I will go",
+        "correct": "If I go"
+      },
+      {
+        "incorrect": "I didn't went",
+        "correct": "I didn't go"
+      },
+      {
+        "incorrect": "He has arrived last week",
+        "correct": "He arrived last week"
+      }
+    ],
+    "#W": [
+      {
+        "incorrect": "I like very much it",
+        "correct": "I like it very much"
+      },
+      {
+        "incorrect": "She is enough old",
+        "correct": "She is old enough"
+      },
+      {
+        "incorrect": "I have always time",
+        "correct": "I always have time"
+      },
+      {
+        "incorrect": "Is ready the breakfast?",
+        "correct": "Is the breakfast ready?"
+      },
+      {
+        "incorrect": "I explain you the problem",
+        "correct": "I explain the problem to you"
+      }
+    ],
+    "#FV": [
+      {
+        "incorrect": "I enjoy to swim",
+        "correct": "I enjoy swimming"
+      },
+      {
+        "incorrect": "I look forward to see you",
+        "correct": "I look forward to seeing you"
+      },
+      {
+        "incorrect": "I can to go",
+        "correct": "I can go"
+      },
+      {
+        "incorrect": "She make me cry",
+        "correct": "She makes me cry"
+      },
+      {
+        "incorrect": "We suggested to go",
+        "correct": "We suggested going"
+      }
+    ],
+    "#CN": [
+      {
+        "incorrect": "informations",
+        "correct": "information"
+      },
+      {
+        "incorrect": "advices",
+        "correct": "advice"
+      },
+      {
+        "incorrect": "furnitures",
+        "correct": "furniture"
+      },
+      {
+        "incorrect": "homeworks",
+        "correct": "homework"
+      },
+      {
+        "incorrect": "a news",
+        "correct": "some news"
+      }
+    ],
+    "#AS": [
+      {
+        "incorrect": "I explained him the rule",
+        "correct": "I explained the rule to him"
+      },
+      {
+        "incorrect": "She said me that",
+        "correct": "She told me that"
+      },
+      {
+        "incorrect": "I suggest you to go",
+        "correct": "I suggest that you go"
+      },
+      {
+        "incorrect": "Describe me the picture",
+        "correct": "Describe the picture to me"
+      },
+      {
+        "incorrect": "He recommended me the book",
+        "correct": "He recommended the book to me"
+      }
+    ],
+    "#ID": [
+      {
+        "incorrect": "make a party",
+        "correct": "have a party"
+      },
+      {
+        "incorrect": "take a coffee",
+        "correct": "have a coffee"
+      },
+      {
+        "incorrect": "in the end of the day",
+        "correct": "at the end of the day"
+      },
+      {
+        "incorrect": "make a question",
+        "correct": "ask a question"
+      },
+      {
+        "incorrect": "do a mistake",
+        "correct": "make a mistake"
+      }
+    ]
+  }
+}

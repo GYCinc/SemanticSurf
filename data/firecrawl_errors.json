@@ -1,0 +1,376 @@
+{
+  "source": "Algorithmic Generation based on Cambridge Learner Corpus rules (Nicholls, 2003)",
+  "count": 74,
+  "codes": [
+    {
+      "code": "#FA",
+      "category": "Wrong Form used - Pronoun (Anaphoric)",
+      "description": "Wrong Form used involving a Pronoun (Anaphoric)"
+    },
+    {
+      "code": "#FC",
+      "category": "Wrong Form used - Conjunction",
+      "description": "Wrong Form used involving a Conjunction"
+    },
+    {
+      "code": "#FD",
+      "category": "Wrong Form used - Determiner",
+      "description": "Wrong Form used involving a Determiner"
+    },
+    {
+      "code": "#FJ",
+      "category": "Wrong Form used - Adjective",
+      "description": "Wrong Form used involving a Adjective"
+    },
+    {
+      "code": "#FN",
+      "category": "Wrong Form used - Noun",
+      "description": "Wrong Form used involving a Noun"
+    },
+    {
+      "code": "#FQ",
+      "category": "Wrong Form used - Quantifier",
+      "description": "Wrong Form used involving a Quantifier"
+    },
+    {
+      "code": "#FT",
+      "category": "Wrong Form used - Preposition",
+      "description": "Wrong Form used involving a Preposition"
+    },
+    {
+      "code": "#FV",
+      "category": "Wrong Form used - Verb",
+      "description": "Wrong Form used involving a Verb"
+    },
+    {
+      "code": "#FY",
+      "category": "Wrong Form used - Adverb (-lY)",
+      "description": "Wrong Form used involving a Adverb (-lY)"
+    },
+    {
+      "code": "#MA",
+      "category": "Something Missing - Pronoun (Anaphoric)",
+      "description": "Something Missing involving a Pronoun (Anaphoric)"
+    },
+    {
+      "code": "#MC",
+      "category": "Something Missing - Conjunction",
+      "description": "Something Missing involving a Conjunction"
+    },
+    {
+      "code": "#MD",
+      "category": "Something Missing - Determiner",
+      "description": "Something Missing involving a Determiner"
+    },
+    {
+      "code": "#MJ",
+      "category": "Something Missing - Adjective",
+      "description": "Something Missing involving a Adjective"
+    },
+    {
+      "code": "#MN",
+      "category": "Something Missing - Noun",
+      "description": "Something Missing involving a Noun"
+    },
+    {
+      "code": "#MQ",
+      "category": "Something Missing - Quantifier",
+      "description": "Something Missing involving a Quantifier"
+    },
+    {
+      "code": "#MT",
+      "category": "Something Missing - Preposition",
+      "description": "Something Missing involving a Preposition"
+    },
+    {
+      "code": "#MV",
+      "category": "Something Missing - Verb",
+      "description": "Something Missing involving a Verb"
+    },
+    {
+      "code": "#MY",
+      "category": "Something Missing - Adverb (-lY)",
+      "description": "Something Missing involving a Adverb (-lY)"
+    },
+    {
+      "code": "#RA",
+      "category": "Word or phrase needs Replacing - Pronoun (Anaphoric)",
+      "description": "Word or phrase needs Replacing involving a Pronoun (Anaphoric)"
+    },
+    {
+      "code": "#RC",
+      "category": "Word or phrase needs Replacing - Conjunction",
+      "description": "Word or phrase needs Replacing involving a Conjunction"
+    },
+    {
+      "code": "#RD",
+      "category": "Word or phrase needs Replacing - Determiner",
+      "description": "Word or phrase needs Replacing involving a Determiner"
+    },
+    {
+      "code": "#RJ",
+      "category": "Word or phrase needs Replacing - Adjective",
+      "description": "Word or phrase needs Replacing involving a Adjective"
+    },
+    {
+      "code": "#RN",
+      "category": "Word or phrase needs Replacing - Noun",
+      "description": "Word or phrase needs Replacing involving a Noun"
+    },
+    {
+      "code": "#RQ",
+      "category": "Word or phrase needs Replacing - Quantifier",
+      "description": "Word or phrase needs Replacing involving a Quantifier"
+    },
+    {
+      "code": "#RT",
+      "category": "Word or phrase needs Replacing - Preposition",
+      "description": "Word or phrase needs Replacing involving a Preposition"
+    },
+    {
+      "code": "#RV",
+      "category": "Word or phrase needs Replacing - Verb",
+      "description": "Word or phrase needs Replacing involving a Verb"
+    },
+    {
+      "code": "#RY",
+      "category": "Word or phrase needs Replacing - Adverb (-lY)",
+      "description": "Word or phrase needs Replacing involving a Adverb (-lY)"
+    },
+    {
+      "code": "#UA",
+      "category": "Word or phrase is Unnecessary - Pronoun (Anaphoric)",
+      "description": "Word or phrase is Unnecessary involving a Pronoun (Anaphoric)"
+    },
+    {
+      "code": "#UC",
+      "category": "Word or phrase is Unnecessary - Conjunction",
+      "description": "Word or phrase is Unnecessary involving a Conjunction"
+    },
+    {
+      "code": "#UD",
+      "category": "Word or phrase is Unnecessary - Determiner",
+      "description": "Word or phrase is Unnecessary involving a Determiner"
+    },
+    {
+      "code": "#UJ",
+      "category": "Word or phrase is Unnecessary - Adjective",
+      "description": "Word or phrase is Unnecessary involving a Adjective"
+    },
+    {
+      "code": "#UN",
+      "category": "Word or phrase is Unnecessary - Noun",
+      "description": "Word or phrase is Unnecessary involving a Noun"
+    },
+    {
+      "code": "#UQ",
+      "category": "Word or phrase is Unnecessary - Quantifier",
+      "description": "Word or phrase is Unnecessary involving a Quantifier"
+    },
+    {
+      "code": "#UT",
+      "category": "Word or phrase is Unnecessary - Preposition",
+      "description": "Word or phrase is Unnecessary involving a Preposition"
+    },
+    {
+      "code": "#UV",
+      "category": "Word or phrase is Unnecessary - Verb",
+      "description": "Word or phrase is Unnecessary involving a Verb"
+    },
+    {
+      "code": "#UY",
+      "category": "Word or phrase is Unnecessary - Adverb (-lY)",
+      "description": "Word or phrase is Unnecessary involving a Adverb (-lY)"
+    },
+    {
+      "code": "#DA",
+      "category": "Word is wrongly Derived - Pronoun (Anaphoric)",
+      "description": "Word is wrongly Derived involving a Pronoun (Anaphoric)"
+    },
+    {
+      "code": "#DC",
+      "category": "Word is wrongly Derived - Conjunction",
+      "description": "Word is wrongly Derived involving a Conjunction"
+    },
+    {
+      "code": "#DD",
+      "category": "Word is wrongly Derived - Determiner",
+      "description": "Word is wrongly Derived involving a Determiner"
+    },
+    {
+      "code": "#DJ",
+      "category": "Word is wrongly Derived - Adjective",
+      "description": "Word is wrongly Derived involving a Adjective"
+    },
+    {
+      "code": "#DN",
+      "category": "Word is wrongly Derived - Noun",
+      "description": "Word is wrongly Derived involving a Noun"
+    },
+    {
+      "code": "#DQ",
+      "category": "Word is wrongly Derived - Quantifier",
+      "description": "Word is wrongly Derived involving a Quantifier"
+    },
+    {
+      "code": "#DT",
+      "category": "Word is wrongly Derived - Preposition",
+      "description": "Word is wrongly Derived involving a Preposition"
+    },
+    {
+      "code": "#DV",
+      "category": "Word is wrongly Derived - Verb",
+      "description": "Word is wrongly Derived involving a Verb"
+    },
+    {
+      "code": "#DY",
+      "category": "Word is wrongly Derived - Adverb (-lY)",
+      "description": "Word is wrongly Derived involving a Adverb (-lY)"
+    },
+    {
+      "code": "#CN",
+      "category": "Countability",
+      "description": "Countability of Noun error"
+    },
+    {
+      "code": "#CQ",
+      "category": "Countability",
+      "description": "Wrong Quantifier because of noun countability"
+    },
+    {
+      "code": "#CD",
+      "category": "Countability",
+      "description": "Wrong Determiner because of noun countability"
+    },
+    {
+      "code": "#FFA",
+      "category": "False Friend",
+      "description": "False Friend involving a Pronoun (Anaphoric)"
+    },
+    {
+      "code": "#FFC",
+      "category": "False Friend",
+      "description": "False Friend involving a Conjunction"
+    },
+    {
+      "code": "#FFD",
+      "category": "False Friend",
+      "description": "False Friend involving a Determiner"
+    },
+    {
+      "code": "#FFJ",
+      "category": "False Friend",
+      "description": "False Friend involving a Adjective"
+    },
+    {
+      "code": "#FFN",
+      "category": "False Friend",
+      "description": "False Friend involving a Noun"
+    },
+    {
+      "code": "#FFQ",
+      "category": "False Friend",
+      "description": "False Friend involving a Quantifier"
+    },
+    {
+      "code": "#FFT",
+      "category": "False Friend",
+      "description": "False Friend involving a Preposition"
+    },
+    {
+      "code": "#FFV",
+      "category": "False Friend",
+      "description": "False Friend involving a Verb"
+    },
+    {
+      "code": "#FFY",
+      "category": "False Friend",
+      "description": "False Friend involving a Adverb (-lY)"
+    },
+    {
+      "code": "#AGA",
+      "category": "Agreement",
+      "description": "Anaphoric (pronoun) agreement error"
+    },
+    {
+      "code": "#AGD",
+      "category": "Agreement",
+      "description": "Determiner agreement error"
+    },
+    {
+      "code": "#AGN",
+      "category": "Agreement",
+      "description": "Noun agreement error"
+    },
+    {
+      "code": "#AGV",
+      "category": "Agreement",
+      "description": "Verb agreement error"
+    },
+    {
+      "code": "#AS",
+      "category": "Miscellaneous",
+      "description": "Incorrect Argument Structure"
+    },
+    {
+      "code": "#CE",
+      "category": "Miscellaneous",
+      "description": "Complex Error"
+    },
+    {
+      "code": "#CL",
+      "category": "Miscellaneous",
+      "description": "Collocation error"
+    },
+    {
+      "code": "#ID",
+      "category": "Miscellaneous",
+      "description": "Idiom error"
+    },
+    {
+      "code": "#IN",
+      "category": "Miscellaneous",
+      "description": "Incorrect formation of Noun plural"
+    },
+    {
+      "code": "#IV",
+      "category": "Miscellaneous",
+      "description": "Incorrect Verb inflection"
+    },
+    {
+      "code": "#L",
+      "category": "Miscellaneous",
+      "description": "Inappropriate register (Label)"
+    },
+    {
+      "code": "#TV",
+      "category": "Miscellaneous",
+      "description": "Wrong Tense of Verb"
+    },
+    {
+      "code": "#W",
+      "category": "Miscellaneous",
+      "description": "Incorrect Word order"
+    },
+    {
+      "code": "#X",
+      "category": "Miscellaneous",
+      "description": "Incorrect formation of negative"
+    },
+    {
+      "code": "#M",
+      "category": "General - Single",
+      "description": "Something Missing (General)"
+    },
+    {
+      "code": "#R",
+      "category": "General - Single",
+      "description": "Replace (General)"
+    },
+    {
+      "code": "#U",
+      "category": "General - Single",
+      "description": "Unnecessary (General)"
+    }
+  ]
+}

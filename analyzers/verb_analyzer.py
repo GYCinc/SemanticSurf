@@ -2,7 +2,7 @@
 import os
 import csv
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 logger = logging.getLogger(__name__)
 
@@ -46,18 +46,26 @@ class VerbAnalyzer:
             return 0.0
         return stats.get(usage_type, 0.0)
 
-    def analyze(self, text: str) -> dict:
+    def analyze(self, text: str) -> dict[str, Any]:
         """
         Scans for verbs and potential transitivity issues.
         Only looks up words identified as verbs by POS tagging.
         """
-        from textblob import TextBlob
-        blob = TextBlob(text)
+        import nltk
+        try:
+            tokens = nltk.word_tokenize(text)
+            tagged = nltk.pos_tag(tokens)
+        except Exception as e:
+            logger.error(f"NLTK tagging failed in VerbAnalyzer: {e}")
+            return {
+                "irregular_errors": [],
+                "total_verbs_found": 0
+            }
         
         irregular_errors = []
         
-        for word, tag in blob.tags:
-            # Only process if TextBlob thinks it is a verb (VB, VBD, VBG, VBN, VBP, VBZ)
+        for word, tag in tagged:
+            # Only process if NLTK thinks it is a verb (VB, VBD, VBG, VBN, VBP, VBZ)
             if tag.startswith('VB'):
                 word_lower = word.lower()
                 stats = self.get_stats(word_lower)

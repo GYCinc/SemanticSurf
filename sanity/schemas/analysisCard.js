@@ -29,9 +29,7 @@ export default {
       type: 'object',
       fields: [
         { 
-          name: 'supabaseSessionId', 
           type: 'string', 
-          description: 'The UUID of the session in Supabase' 
         },
         { 
           name: 'timestamp', 

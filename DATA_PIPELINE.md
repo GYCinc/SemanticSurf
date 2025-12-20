@@ -1,4 +1,4 @@
-# Semantic Surfer Data Pipeline
+# Semantic Server Data Pipeline
 This document outlines the data flow from audio input to final storage.
 
 ## 1. Audio Ingestion (`main.py`)
@@ -42,6 +42,5 @@ This document outlines the data flow from audio input to final storage.
     3.  **LLM Synthesis:** **Gemini 1.5 Pro** summarizes the session using full context (Transcript + Notes + Local Metrics).
     4.  **API Handoff:** A single payload is sent to `https://www.gitenglish.com/api/mcp` via `ingest.createSession`.
 *   **Final Destination (Handled by Hub):**
-    *   **Supabase:** Session logs and metadata.
     *   **Sanity:** Pedagogical artifacts (Analysis Cards).
     *   **Inbox:** Words/Terms staged for manual curation into the Student Corpus.

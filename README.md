@@ -1,8 +1,8 @@
-# Semantic Surfer
+# Semantic Server
 
 ## Precision Transcription & Analysis Tool for GitEnglishHub
 
-Semantic Surfer is a high-performance desktop application built for ESL teachers. It acts as a "Smart Capture" layer that records sessions, performs deep linguistic analysis using a tiered Python/LLM pipeline, and syncs curated knowledge to the GitEnglishHub platform.
+Semantic Server is a high-performance desktop application built for ESL teachers. It acts as a "Smart Capture" layer that records sessions, performs deep linguistic analysis using a tiered Python/LLM pipeline, and syncs curated knowledge to the GitEnglishHub platform.
 
 ---
 
@@ -32,7 +32,6 @@ cp .env.example .env
 ## 🔄 The Workflow: Capture to Curation
 
 ### 1. Live Session
-- Select a student from the dropdown (Supabase Sync + Local Fallback).
 - Teach as usual. The transcript scrolls automatically with live WPM tracking.
 - **Marking:** Click words or lines to identify focus points.
 - **Notes:** Use the sidebar to jot down executive observations.
@@ -51,7 +50,6 @@ cp .env.example .env
 
 ## ⚖️ The "Happens" vs "Exists" Rule
 
-- **Transcripts** are "What Happened" (Event Logs) -> Stored in **Supabase**.
 - **Analysis Cards** are "What Exists" (Lesson Artifacts) -> Stored in **Sanity**.
 
 ---

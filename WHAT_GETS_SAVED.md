@@ -1,4 +1,4 @@
-# Semantic Surfer - Complete Data Capture Summary
+# Semantic Server - Complete Data Capture Summary
 
 ## ✅ YES - Everything You Asked For IS Being Saved!
 

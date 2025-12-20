@@ -12,31 +12,31 @@ class LearnerErrorAnalyzer:
     Covers: Morphological, Syntactic, Lexical, and Discourse errors.
     """
 
-    # === DYNAMIC POS-BASED DETECTION (Uses TextBlob/NLTK) ===
-    # These replace the hand-coded lists for broader coverage.
+    WRONG_PLURALS: dict[str, str] = {
+        "peoples": "people",
+        "childrens": "children",
+        "mens": "men",
+        "womens": "women",
+        "polices": "police",
+        "furnitures": "furniture",
+        "informations": "information",
+        "advices": "advice"
+    }
     
     def __init__(self):
-        # Common irregular plurals or "learner forms" to catch
-        self.WRONG_PLURALS: dict[str, str] = {
-            "peoples": "people",
-            "childrens": "children",
-            "mens": "men",
-            "womens": "women",
-            "polices": "police",
-            "furnitures": "furniture",
-            "informations": "information",
-            "advices": "advice"
-        }
+        pass
 
     def _check_missing_subject(self, blob: Any) -> list[dict[str, Any]]:
         """Detects sentences starting with 'Is' or 'Are' (typical L1 Spanish/Portuguese error)."""
-        errors = []
+        errors: list[dict[str, Any]] = []
         for sentence in blob.sentences:
+            if not sentence.words:
+                continue
             first_word = sentence.words[0].lower()
             if first_word in ['is', 'are', 'was', 'were']:
                 errors.append({
-                    "item": f"{sentence[:5]}...",
-                    "correction": f"It {sentence[:5]}...",
+                    "item": f"{sentence[:20]}...",
+                    "correction": f"It {sentence[:20]}...",
                     "explanation": "Missing subject pronoun. Use 'It' before the verb.",
                     "category": "Syntax",
                     "confidence": 0.9
@@ -45,7 +45,7 @@ class LearnerErrorAnalyzer:
 
     def _check_sv_agreement(self, blob: Any) -> list[dict[str, Any]]:
         """Uses POS tags to find Subject-Verb mismatches, handling intervening words."""
-        errors = []
+        errors: list[dict[str, Any]] = []
         tags = blob.tags
         for i in range(len(tags)):
             word, tag = tags[i]
@@ -95,7 +95,7 @@ class LearnerErrorAnalyzer:
         return errors
 
     def _check_wrong_plurals(self, text: str) -> list[dict[str, Any]]:
-        errors = []
+        errors: list[dict[str, Any]] = []
         for wrong, right in self.WRONG_PLURALS.items():
             if f" {wrong} " in f" {text.lower()} ":
                 errors.append({
@@ -107,15 +107,15 @@ class LearnerErrorAnalyzer:
                 })
         return errors
 
-    def analyze(self, text: str) -> list[dict[str, str]]:
+    def analyze(self, text: str) -> list[dict[str, Any]]:
         """
         Analyzes text for learner errors using both regex and dynamic logic.
         """
         from textblob import TextBlob
         blob = TextBlob(text)
-        errors = []
+        errors: list[dict[str, Any]] = []
         
-        # 1. Run Dynamic Checks (The fix for your 14% rate)
+        # 1. Run Dynamic Checks
         errors.extend(self._check_missing_subject(blob))
         errors.extend(self._check_sv_agreement(blob))
         errors.extend(self._check_wrong_plurals(text))
@@ -135,9 +135,9 @@ class LearnerErrorAnalyzer:
         errors = self.analyze(text)
         categories: dict[str, int] = {}
         for e in errors:
-            cat = e.get("category", "Unknown")
+            cat = str(e.get("category", "Unknown"))
             categories[cat] = categories.get(cat, 0) + 1
         return {
             "total_errors": len(errors),
-            "by_category": categories # type: ignore
+            "by_category": categories
         }

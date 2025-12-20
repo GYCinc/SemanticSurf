@@ -1,37 +1,9 @@
-"""
-OpenRouter Client - Unified LLM Gateway
-
-This module provides a type-safe, async-compatible client for OpenRouter,
-enabling access to multiple LLM providers through a single API.
-
-Usage:
-    from lib.openrouter_client import chat, chat_async, stream_chat
-
-    # Synchronous
-    response = chat("What is 2+2?", model="openai/gpt-4o-mini")
-    
-    # Async
-    response = await chat_async("What is 2+2?")
-    
-    # Streaming
-    for chunk in stream_chat("Write a story"):
-        print(chunk, end="")
-
-Environment:
-    OPENROUTER_API_KEY - Required API key from openrouter.ai/settings/keys
-"""
-
 import os
 from typing import Optional, Iterator, AsyncIterator
 from dotenv import load_dotenv
+from openai import OpenAI, AsyncOpenAI
 
 load_dotenv()
-
-try:
-    from openrouter import OpenRouter
-except ImportError:
-    raise ImportError("openrouter package not installed. Run: pip install openrouter")
-
 
 # Default models for different use cases
 MODELS = {
@@ -45,12 +17,28 @@ MODELS = {
 DEFAULT_MODEL = MODELS["smart"]
 
 
-def _get_client() -> OpenRouter:
-    """Get configured OpenRouter client."""
+def _get_client() -> OpenAI:
+    """Get configured OpenAI client pointing to OpenRouter."""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY environment variable not set")
-    return OpenRouter(api_key=api_key)
+    
+    return OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key,
+    )
+
+
+def _get_async_client() -> AsyncOpenAI:
+    """Get configured AsyncOpenAI client pointing to OpenRouter."""
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        raise ValueError("OPENROUTER_API_KEY environment variable not set")
+        
+    return AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key,
+    )
 
 
 def chat(
@@ -80,13 +68,13 @@ def chat(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     
-    with _get_client() as client:
-        response = client.chat.send(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+    client = _get_client()
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
         
     return response.choices[0].message.content
 
@@ -118,13 +106,13 @@ async def chat_async(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     
-    async with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as client:
-        response = await client.chat.send_async(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+    client = _get_async_client()
+    response = await client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
         
     return response.choices[0].message.content
 
@@ -154,61 +142,15 @@ def stream_chat(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     
-    with _get_client() as client:
-        stream = client.chat.send(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            stream=True,
-        )
-        
-        for event in stream:
-            if event.choices:
-                content = event.choices[0].delta.content
-                if content:
-                    yield content
-
-
-def analyze_text(
-    text: str,
-    task: str,
-    model: Optional[str] = None,
-) -> str:
-    """
-    Analyze text with a specific task instruction.
+    client = _get_client()
+    stream = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=temperature,
+        stream=True,
+    )
     
-    Convenience function for common analysis patterns.
-    
-    Args:
-        text: Text to analyze
-        task: What to do with the text (e.g., "summarize", "extract errors", "translate to Spanish")
-        model: Model to use. Defaults to analysis model.
-        
-    Returns:
-        Analysis result
-    """
-    model = model or MODELS["analysis"]
-    
-    prompt = f"""Task: {task}
+    for chunk in stream:
+        if chunk.choices[0].delta.content is not None:
+            yield chunk.choices[0].delta.content
 
-Text:
-{text}
-
-Provide your analysis:"""
-    
-    return chat(prompt, model=model, temperature=0.3)
-
-
-# Quick test
-if __name__ == "__main__":
-    print("Testing OpenRouter client...")
-    
-    try:
-        response = chat(
-            "Say 'OpenRouter integration successful!' and nothing else.",
-            model=MODELS["fast"]
-        )
-        print(f"Response: {response}")
-    except Exception as e:
-        print(f"Error: {e}")
-        print("Make sure OPENROUTER_API_KEY is set in .env")

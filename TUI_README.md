@@ -1,4 +1,4 @@
-# Semantic Surfer - Terminal UI Edition 🏄🌊
+# Semantic Server - Terminal UI Edition 🏄🌊
 
 A BALLER terminal interface for real-time transcription with ASCII surfer animations!
 

@@ -18,10 +18,8 @@ function createWindow() {
     height: 700,
     minWidth: 800,
     minHeight: 600,
-    transparent: true,
-    backgroundColor: "#00000000", // Transparent for glass effect
-    vibrancy: "under-window",
-    visualEffectState: "active",
+    transparent: false,
+    backgroundColor: "#030303", 
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -29,7 +27,7 @@ function createWindow() {
       backgroundThrottling: false,
     },
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 14, y: 24 }, // Centered in header
+    trafficLightPosition: { x: 16, y: 24 }, 
   });
 
   // --- FIX: Content Security Policy (Allows connection to ws://localhost:8765 and external scripts) ---
