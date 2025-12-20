@@ -146,6 +146,12 @@ class TestHandoffPipeline(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(params['punctuatedTranscript'], "Hello world.")
         self.assertEqual(len(params['sentences']), 1)
 
+        # Check Word-Level Data (Critical for Learner Corpus)
+        words = params['turns'][0]['words']
+        self.assertTrue(len(words) >= 2, "Should have words in the turn")
+        self.assertEqual(words[0]['text'], "Hello") # Raw, no punctuation
+        self.assertEqual(words[1]['text'], "world") # Raw, no punctuation
+
         # Check Error Phenomena (Merged from LLM + Rule Based)
         # Note: Rule based might find nothing on "Hello world", but LLM mock had one.
         errors = params['errorPhenomena']

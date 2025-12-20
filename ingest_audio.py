@@ -420,7 +420,7 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
             })
 
     params = {
-        'turns': [{"speaker": t.get("speaker"), "transcript": t.get("transcript")} for t in all_turns if isinstance(t, dict)],
+        'turns': [{"speaker": t.get("speaker"), "transcript": t.get("transcript"), "words": t.get("words")} for t in all_turns if isinstance(t, dict)],
         'transcriptText': "\n".join([f"{t['speaker']}: {t['transcript']}" for t in all_turns if isinstance(t, dict)]),
         'punctuatedTranscript': diar_result.get("punctuated_text", ""),
         'sentences': diar_result.get("sentences", []),
