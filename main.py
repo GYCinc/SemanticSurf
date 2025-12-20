@@ -34,6 +34,7 @@ from .analyzers.llm_gateway import run_lm_gateway_query
 from .ingest_audio import (
     calculate_file_hash,
     perform_batch_diarization,
+    process_and_upload
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -179,35 +180,18 @@ async def websocket_handler(websocket):
                 
             elif m_type == "end_session":
                 logger.info("🛑 Stop requested by UI")
-                # Trigger Handoff
-                if current_session["session_id"] and current_session["turns"]:
-                    logger.info("🚚 Initiating Handoff to Castle...")
-                    
-                    # Convert raw dict turns to Schema Turns
-                    schema_turns = []
-                    for t in current_session["turns"]:
-                        try:
-                            # Explicitly extract fields to satisfy type checkers and ensure data integrity
-                            schema_turns.append(Turn(
-                                turn_order=int(t.get("turn_order", 0)),
-                                transcript=str(t.get("transcript", "")),
-                                speaker=str(t.get("speaker", "Unknown")),
-                                timestamp=str(t.get("timestamp", ""))
-                            ))
-                        except Exception as e:
-                            logger.warn(f"Skipping invalid turn: {e}")
+                # Trigger Handoff via Audio Pipeline if audio exists
+                audio_p = current_session.get("audio_path")
+                student = current_session.get("student_name", "Unknown")
+                notes = current_session.get("notes", "")
 
-                    # Use asyncio.to_thread for the synchronous push function if needed, 
-                    # or better: make push_to_semantic_server async? 
-                    # For now, running sync in thread or direct since this is end of session
-                    # We'll use a thread to not block WS
-                    threading.Thread(target=push_to_semantic_server, args=(
-                        str(current_session["student_name"]), 
-                        schema_turns, 
-                        {"source": "live_session"}, # Minimal context for now
-                        current_session["session_id"],
-                        current_session["notes"]
-                    )).start()
+                if audio_p and os.path.exists(audio_p):
+                    logger.info(f"🚚 Initiating Full Handoff for {student} via {audio_p}...")
+                    # Run async process in a thread to avoid blocking WS loop?
+                    # Actually, process_and_upload is async. We can schedule it on the loop.
+                    asyncio.create_task(process_and_upload(audio_p, student, notes))
+                else:
+                    logger.warning("⚠️ No audio file found for session handoff.")
                 
                 # Termination handled via stream close in run_streaming_client
                 
@@ -297,52 +281,6 @@ def run_streaming_client():
     
     try:
         client.stream(audio_stream_manager)
-        # --- FINAL UPLOAD (The "Load") ---
-        logger.info("🚚 Delivering the load to Castle...")
-        
-        # We need to calculate duration roughly
-        duration_sec = 0.0
-        session_turns = current_session.get("turns", [])
-        student_name = current_session.get("student_name", "Unknown")
-
-        if session_turns:
-            # session_turns is List[SessionTurn] so we can access keys safely
-            start_t = session_turns[0].get('timestamp')
-            end_t = session_turns[-1].get('timestamp')
-            # Rudimentary duration sync
-            # For now, let's just push what we have.
-            pass
-
-        # Prepare context (minimal for now, "just the tip")
-        context = {
-            "source": "live_session",
-            "student_name": student_name
-            # detailed analysis can be added later
-        }
-
-        # Convert dict turns to Schema Turns
-        real_turns = []
-        if isinstance(session_turns, list):
-            for t in session_turns:
-                try:
-                    real_turns.append(Turn(
-                        turn_order=int(t.get('turn_order', 0)),
-                        transcript=str(t.get('transcript', "")),
-                        speaker=str(t.get('speaker', "Unknown")),
-                        timestamp=str(t.get('timestamp', ""))
-                    ))
-                except Exception as e:
-                    logger.warning(f"Skipping malformed turn: {e}")
-
-        # PUSH
-        push_to_semantic_server(
-            student_name=str(student_name),
-            turns=real_turns, 
-            analysis_context=context,
-            session_id=None, # will generate new
-            notes="Live session upload"
-        )
-        
     except Exception as e:
         logger.error(f"❌ Session Error: {e}")
     finally:

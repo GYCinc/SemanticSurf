@@ -272,16 +272,16 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
         return
 
     # 2. Local Analysis (Tiered Suite)
-    from AssemblyAIv2.analyzers.session_analyzer import SessionAnalyzer
-    from AssemblyAIv2.analyzers.pos_analyzer import POSAnalyzer
-    from AssemblyAIv2.analyzers.ngram_analyzer import NgramAnalyzer
-    from AssemblyAIv2.analyzers.verb_analyzer import VerbAnalyzer
-    from AssemblyAIv2.analyzers.article_analyzer import ArticleAnalyzer
-    from AssemblyAIv2.analyzers.amalgum_analyzer import AmalgumAnalyzer
-    from AssemblyAIv2.analyzers.comparative_analyzer import ComparativeAnalyzer
-    from AssemblyAIv2.analyzers.phenomena_matcher import ErrorPhenomenonMatcher
-    from AssemblyAIv2.analyzers.preposition_analyzer import PrepositionAnalyzer
-    from AssemblyAIv2.analyzers.learner_error_analyzer import LearnerErrorAnalyzer
+    from analyzers.session_analyzer import SessionAnalyzer
+    from analyzers.pos_analyzer import POSAnalyzer
+    from analyzers.ngram_analyzer import NgramAnalyzer
+    from analyzers.verb_analyzer import VerbAnalyzer
+    from analyzers.article_analyzer import ArticleAnalyzer
+    from analyzers.amalgum_analyzer import AmalgumAnalyzer
+    from analyzers.comparative_analyzer import ComparativeAnalyzer
+    from analyzers.phenomena_matcher import ErrorPhenomenonMatcher
+    from analyzers.preposition_analyzer import PrepositionAnalyzer
+    from analyzers.learner_error_analyzer import LearnerErrorAnalyzer
         
     # Construct unified JSON for analyzers
     session_json = {
@@ -344,14 +344,14 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
     }
 
     # 3. LLM Gateway Synthesis (Claude 4.5 for Batch)
-    from .analyzers.llm_gateway import run_lm_gateway_query
+    from analyzers.llm_gateway import run_lm_gateway_query
     # Create temp file for lemur_query
     temp_path = Path(f"batch_staging_{uuid.uuid4().hex}.json")
     with open(str(temp_path), 'w') as f: json.dump(session_json, f)
             
     # Run analysis (Note: lm_gateway is currently set to gemini-1.5-pro, 
     # but we can override model here if we want maximum depth)
-    from .analyzers.schemas import Turn
+    from analyzers.schemas import Turn
     turn_objs: list[Turn] = []
     for i, t in enumerate(all_turns or []):
         turn_objs.append(Turn(
