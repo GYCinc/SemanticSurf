@@ -33,6 +33,7 @@ logger = logging.getLogger("IngestAudio")
 AAI_API_KEY: str = os.getenv("AAI_API_KEY", os.getenv("ASSEMBLYAI_API_KEY", ""))
 GITENGLISH_API_BASE: str = os.getenv("GITENGLISH_API_BASE", "https://gitenglish.com")
 GITENGLISH_MCP_SECRET: str = os.getenv("MCP_SECRET", "")
+MISTRAL_API_KEY: str = os.getenv("MISTRAL_API_KEY", "")
 
 # --- NO DIRECT DATABASE CONNECTIONS ---
 # Everything flows through the GitEnglishHub API
@@ -47,6 +48,9 @@ if AAI_API_KEY:
 
 if not GITENGLISH_MCP_SECRET:
     logger.warning("⚠️ GITENGLISH_MCP_SECRET not set! Hub API calls will fail.")
+
+if not MISTRAL_API_KEY:
+    logger.warning("⚠️ MISTRAL_API_KEY not set! Boss MF analysis will be skipped.")
 
 # --- TypedDict Definitions ---
 
@@ -111,6 +115,81 @@ async def send_to_gitenglish(action: str, student_id_or_name: str, params: Mappi
             return response.json() if response.status_code == 200 else {"success": False, "error": response.text}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+async def generate_llm_analysis(
+    student_name: str, 
+    transcript_text: str, 
+    user_notes: str, 
+    analysis_context: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Generates the 'Boss MF' analysis using the Universal Guru Prompt.
+    """
+    if not MISTRAL_API_KEY:
+        logger.warning("🚫 LLM Analysis skipped: MISTRAL_API_KEY missing.")
+        return {
+            "schemaVersion": "0.1.0",
+            "termination": {"reason": "skipped", "detail": "MISTRAL_API_KEY missing"},
+            "response": "LLM Analysis Unavailable",
+            "annotated_errors": [],
+            "student_profile": {}
+        }
+        
+    try:
+        # 1. Read the Boss MF Prompt
+        prompt_path = WORKSPACE_ROOT / "AssemblyAIv2" / "UNIVERSAL_GURU_PROMPT.txt"
+        if not prompt_path.exists():
+             logger.error(f"❌ Prompt not found at {prompt_path}")
+             return {"error": "Prompt file missing"}
+
+        with open(prompt_path, "r") as f:
+            system_prompt = f.read()
+
+        # 2. Prepare Context (Hyper RAG)
+        # We inject the "Three Layers of Reality"
+        user_message = f"""
+SESSION DATA FOR: {student_name}
+
+[LAYER 1: RAW TRANSCRIPT]
+{transcript_text}
+
+[LAYER 2: USER NOTES (GOD-TIER)]
+{user_notes if user_notes else "No specific user notes provided for this session."}
+
+[LAYER 3: PREPLY/EXTERNAL NOTES]
+(None provided for this session - treat User Notes as supreme authority)
+
+[LOCAL ANALYSIS HINTS]
+Errors detected by rule-based system: {json.dumps(analysis_context.get('detected_errors', []), default=str)}
+
+ANALYZE NOW. OUTPUT JSON ONLY.
+"""
+
+        # 3. Call the Gateway (The Gangsta Way)
+        from .analyzers import llm_gateway
+        
+        parsed = await llm_gateway.generate_analysis(
+            system_prompt=system_prompt,
+            user_message=user_message
+        )
+        
+        if parsed:
+            return {
+                "termination": {"reason": "success"},
+                "response": parsed.get("session_summary", ""),
+                "annotated_errors": parsed.get("language_feedback", []),
+                "student_profile": {"boss_notes": parsed.get("boss_notes", "")},
+                "raw_output": parsed
+            }
+
+    except Exception as e:
+        logger.error(f"💥 LLM Generation Failed: {e}")
+        return {
+            "schemaVersion": "0.1.0",
+            "termination": {"reason": "error", "detail": str(e)},
+            "response": "Analysis Failed",
+            "annotated_errors": []
+        }
 
 async def perform_batch_diarization(audio_path: str, student_name: str) -> Mapping[str, object] | None:
     """
@@ -390,19 +469,16 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
         "pos_summary": pos_ratios
     }
 
-    # 3. LLM_ANALYSIS (optional)
-    # IMPORTANT: Do NOT call the legacy Python "LLM Gateway" during ingestion.
-    # The file [`analyzers/llm_gateway.py`](AssemblyAIv2/analyzers/llm_gateway.py:1) currently
-    # performs a *push* to GitEnglishHub (`sanity.createLessonAnalysis`) and is not a pure
-    # "LLM synthesis" function. Calling it here can create duplicate/invalid artifacts and
-    # break the ingest flow.
-    llm_analysis: dict[str, object] = {
-        "schemaVersion": "0.1.0",
-        "termination": {"reason": "skipped", "detail": "LLM_ANALYSIS disabled for stable ingest"},
-        "response": "",
-        "annotated_errors": [],
-        "student_profile": {},
-    }
+    # 3. LLM_ANALYSIS (Boss MF)
+    logger.info("🦅 Generating Boss MF Analysis...")
+    transcript_full = "\n".join([f"{t['speaker']}: {t['transcript']}" for t in all_turns])
+    
+    llm_analysis = await generate_llm_analysis(
+        student_name=student_name,
+        transcript_text=transcript_full,
+        user_notes=notes,
+        analysis_context=analysis_context
+    )
 
     # 4. Final Handoff to Hub API
     error_phenomena = []
@@ -412,11 +488,11 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
             for err in annotated_errors:
                 if isinstance(err, dict):
                     error_phenomena.append({
-                        "item": err.get('quote'),
-                        "correction": err.get('correction'),
-                        "category": err.get('linguistic_category', 'Syntax'),
+                        "item": err.get('specificPhenomenon') or err.get('quote'), # Map specificPhenomenon to item
+                        "correction": err.get('suggestedCorrection') or err.get('correction'),
+                        "category": err.get('category', 'Syntax'),
                         "explanation": err.get('explanation'),
-                        "source": "LLM_ANALYSIS"
+                        "source": f"BOSS_MF_{err.get('source_weight', 'AUTO')}"
                     })
     
     for err in detected_errors:
@@ -431,7 +507,7 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
     params = {
         # Preserve the full turn shape (incl. timestamps/confidence) for downstream metrics.
         'turns': all_turns,
-        'transcriptText': "\n".join([f"{t['speaker']}: {t['transcript']}" for t in all_turns]),
+        'transcriptText': transcript_full,
         'punctuatedTranscript': diar_result.get("punctuated_text", ""),
         'sentences': diar_result.get("sentences", []),
         'sessionDate': session_json['start_time'],

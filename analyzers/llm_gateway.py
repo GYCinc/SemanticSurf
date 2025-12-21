@@ -83,12 +83,64 @@ def push_to_semantic_server(
             logger.info("✅ Data handed off to GitEnglishHub successfully.")
             return data
 
-    except httpx.HTTPStatusError as e:
-        logger.error(f"❌ GitEnglishHub Rejected Data (HTTP {e.response.status_code}): {e.response.text}")
-        return {"success": False, "error": f"HTTP {e.response.status_code}", "details": e.response.text}
     except Exception as e:
         logger.error(f"❌ Handoff Failed: {e}")
         return {"success": False, "error": str(e)}
+
+async def generate_analysis(
+    system_prompt: str,
+    user_message: str,
+    model: str = "mistral-large-latest",
+    temperature: float = 0.2
+) -> Mapping[str, object] | None:
+    """
+    The Oracle: Generates analysis using the Mistral API (via Gateway).
+    Encapsulates all LLM provider logic here.
+    """
+    api_key = os.getenv("MISTRAL_API_KEY")
+    if not api_key:
+        logger.warning("🚫 MISTRAL_API_KEY missing. Cannot generate analysis.")
+        return None
+
+    url = "https://api.mistral.ai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": temperature
+    }
+
+    try:
+        logger.info(f"🦅 Connecting to Mistral AI ({model})...")
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            
+            data = response.json()
+            content = data["choices"][0]["message"]["content"]
+            if not content:
+                logger.error("❌ Mistral returned empty content.")
+                return None
+                
+            return json.loads(content)
+
+    except httpx.HTTPStatusError as e:
+        logger.error(f"❌ Mistral API Error {e.response.status_code}: {e.response.text}")
+        return None
+    except json.JSONDecodeError:
+        logger.error("❌ Failed to parse Mistral response as JSON.")
+        return None
+    except Exception as e:
+        logger.error(f"❌ LLM Generation Failed: {e}")
+        return None
 
 # Alias for backward compatibility
 run_lm_gateway_query = push_to_semantic_server
