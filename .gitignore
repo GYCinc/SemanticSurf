@@ -31,3 +31,6 @@ sessions/
 *.mp3
 *.flac
 *.m4a
+
+.gemini/
+gha-creds-*.json

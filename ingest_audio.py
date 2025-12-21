@@ -16,11 +16,16 @@ if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.append(str(WORKSPACE_ROOT))
 
 # Load environment early
-from dotenv import load_dotenv
-_ = load_dotenv()
+from dotenv import load_dotenv # type: ignore
+# Load environment properly from gitenglishhub
+env_path = WORKSPACE_ROOT / "gitenglishhub" / ".env.local"
+if env_path.exists():
+    _ = load_dotenv(dotenv_path=env_path)
+else:
+    _ = load_dotenv() # Fallback
 
 import assemblyai as aai # type: ignore
-import httpx
+import httpx # type: ignore
 
 # --- Setup Logging ---
 logging.basicConfig(
@@ -166,7 +171,7 @@ ANALYZE NOW. OUTPUT JSON ONLY.
 """
 
         # 3. Call the Gateway (The Gangsta Way)
-        from .analyzers import llm_gateway
+        from AssemblyAIv2.analyzers import llm_gateway
         
         parsed = await llm_gateway.generate_analysis(
             system_prompt=system_prompt,
@@ -181,6 +186,14 @@ ANALYZE NOW. OUTPUT JSON ONLY.
                 "student_profile": {"boss_notes": parsed.get("boss_notes", "")},
                 "raw_output": parsed
             }
+        
+        logger.warning("⚠️ LLM Gateway returned None (Analysis Skipped)")
+        return {
+            "schemaVersion": "0.1.0",
+            "termination": {"reason": "skipped", "detail": "LLM Gateway returned None"},
+            "response": "Analysis Skipped",
+            "annotated_errors": []
+        }
 
     except Exception as e:
         logger.error(f"💥 LLM Generation Failed: {e}")
@@ -199,6 +212,24 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
     Merge: Align Speaker Labels to Raw Words.
     """
     logger.info(f"🎙️ Starting Dual-Pass Diarization for {audio_path}...")
+    
+    # --- CACHE CHECK (God-Tier Efficiency) ---
+    file_hash = calculate_file_hash(audio_path)
+    cache_path = WORKSPACE_ROOT / "AssemblyAIv2/ingestion_cache.json"
+    cache_data: dict[str, object] = {} # type: ignore
+    
+    if cache_path.exists():
+        try:
+            with open(cache_path, "r") as f:
+                cache_data = cast(dict[str, object], json.load(f))
+        except Exception as e:
+            logger.warning(f"Failed to load cache: {e}")
+
+    # If we have a cached result for this hash, USE IT.
+    if file_hash and file_hash in cache_data:
+        logger.info(f"⚡ CACHE HIT! Skipping Upload & Transcription for {file_hash[:8]}...")
+        return cast(Mapping[str, object], cache_data[file_hash])
+
     transcriber = aai.Transcriber()
     
     # --- PASS 1: STRUCTURE (Diarization) ---
@@ -209,7 +240,7 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
         speaker_labels=True,
         speakers_expected=2,
         punctuate=True,
-        format_text=True # Need True for full readability
+        format_text=False
     )
     
     # --- PASS 2: CONTENT (Raw Reality) ---
@@ -249,7 +280,7 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
         # Strategy: Iterate through RAW words. Find corresponding Speaker from Diarized words based on time overlap.
         
         # Build Diarized Word Map: [(start, end, speaker)]
-        diar_map = []
+        diar_map: list[dict[str, float | str]] = []
         if t_diar.utterances:
             for utt in t_diar.utterances:
                 for w in utt.words:
@@ -265,7 +296,7 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
         # Build Final Turns
         # We will reconstruct turns based on SPEAKER CHANGES in the merged stream.
         
-        current_speaker = "Unknown"
+        current_speaker: str = "Unknown"
         current_words: list[RawWord] = []
         all_turns: list[SessionTurn] = []
         
@@ -279,7 +310,7 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
         for w in raw_words:
             w_start = w.start
             w_end = w.end
-            found_speaker = None
+            found_speaker: str | None = None
             
             # Look ahead in diar_map
             # We look for ANY overlap.
@@ -296,7 +327,7 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
                     break
                 
                 # Overlap found!
-                found_speaker = d['speaker']
+                found_speaker = cast(str, d['speaker'])
                 break # Take first overlap
             
             if not found_speaker:
@@ -347,17 +378,48 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
              # Try to get sentences if available
              sentences = [{"text": s.text, "start": s.start, "end": s.end} for s in t_diar.get_sentences()] # type: ignore
         except:
-             # Fallback if get_sentences() fails or isn't available
              pass
 
         logger.info(f"✅ Dual-Pass Merge Complete. Turns: {len(all_turns)}")
 
-        return {
+        # Serialize full transcript objects for "enhanced metadata"
+        # We store the raw API responses if available, or build comprehensive dicts
+        
+        def serialize_words(words):
+            return [{"text": w.text, "start": w.start, "end": w.end, "confidence": w.confidence, "speaker": getattr(w, 'speaker', None)} for w in words]
+
+        result = {
             "turns": all_turns,
             "duration": audio_duration,
             "punctuated_text": punctuated_text,
-            "sentences": sentences
+            "sentences": sentences,
+            # User Requested: "every instance of the v transcript cache"
+            "raw_transcript_text": t_raw.text,
+            "diarized_transcript_text": t_diar.text,
+            "words_raw": serialize_words(t_raw.words),
+            "words_diarized": serialize_words(t_diar.words),
+            "raw_response_diar": t_diar.json_response,
+            "raw_response_raw": t_raw.json_response
         }
+
+        # --- CACHE WRITE ---
+        if file_hash:
+            try:
+                # Reload cache in case of parallel writes (simple race condition handling)
+                current_cache = {}
+                if cache_path.exists():
+                     with open(cache_path, "r") as f:
+                        current_cache = json.load(f)
+                
+                current_cache[file_hash] = result
+                
+                with open(cache_path, "w") as f:
+                    json.dump(current_cache, f, indent=2)
+                logger.info(f"💾 Saved result to cache for {file_hash[:8]}")
+            except Exception as e:
+                logger.warning(f"Failed to write cache: {e}")
+
+        return result
 
     except Exception as e:
         logger.error(f"❌ Dual-Pass Diarization error: {e}")

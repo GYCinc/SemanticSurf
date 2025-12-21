@@ -1,5 +1,4 @@
 import logging
-from typing import Optional, Any
 
 logger = logging.getLogger("POSAnalyzer")
 
@@ -56,10 +55,10 @@ class POSAnalyzer:
         """
         Internal tagging logic using TextBlob.
         """
-        import nltk
+        import nltk # type: ignore
         try:
-            tokens = nltk.word_tokenize(text)
-            tagged = nltk.pos_tag(tokens)
+            tokens = nltk.word_tokenize(text) # type: ignore
+            tagged = nltk.pos_tag(tokens) # type: ignore
         except Exception as e:
             logger.error(f"NLTK tagging failed: {e}")
             # Fallback to simple split if NLTK fails
@@ -71,7 +70,7 @@ class POSAnalyzer:
             
         return tag_counts
 
-    def analyze(self, text: str) -> dict[str, Any]:
+    def analyze(self, text: str) -> dict[str, int]:
         """
         Returns a dictionary of raw POS tag counts.
         """
