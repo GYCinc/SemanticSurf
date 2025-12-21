@@ -126,6 +126,68 @@ class SessionAnalyzer:
             self.teacher_turns = cast(list[dict[str, Any]], self._get_turns_for_speaker(self.teacher_label))
             self.teacher_full_text = " ".join([cast(str, t.get('transcript', '')) for t in self.teacher_turns])
 
+        # --- Enriched Metadata (Auto-Calculate if missing) ---
+        self._enrich_metadata()
+
+    def _enrich_metadata(self):
+        """
+        Robustly populate missing metadata (timestamps, pauses, WPM) 
+        derived from raw word-level data.
+        """
+        for turn in self.turns:
+            words = cast(list[dict[str, Any]], turn.get('words', []))
+            if not words: continue
+
+            # 1. Infer Turn Timestamps (if missing)
+            start_key = 'start' if 'start' in turn else 'start_ms'
+            end_key = 'end' if 'end' in turn else 'end_ms'
+            
+            if turn.get(start_key) is None and words:
+                # Handle both 'start' and 'start_ms' in words
+                w_start = words[0].get('start') or words[0].get('start_ms')
+                if w_start is not None:
+                    turn[start_key] = w_start
+            
+            if turn.get(end_key) is None and words:
+                w_end = words[-1].get('end') or words[-1].get('end_ms')
+                if w_end is not None:
+                    turn[end_key] = w_end
+
+            # 2. Ensure Analysis Dict Exists
+            if 'analysis' not in turn:
+                turn['analysis'] = {}
+            analysis = cast(dict[str, Any], turn['analysis'])
+
+            # 3. Calculate Pauses (if missing)
+            if 'pauses' not in analysis:
+                pauses = []
+                for i in range(len(words) - 1):
+                    w_curr = words[i]
+                    w_next = words[i+1]
+                    
+                    curr_end = w_curr.get('end') or w_curr.get('end_ms') or 0
+                    next_start = w_next.get('start') or w_next.get('start_ms') or 0
+                    
+                    gap = float(next_start) - float(curr_end)
+                    if gap > 300: # 300ms threshold for pause
+                        pauses.append({
+                            'start_ms': curr_end,
+                            'end_ms': next_start,
+                            'duration_ms': gap
+                        })
+                analysis['pauses'] = pauses
+
+            # 4. Calculate WPM (if missing)
+            if 'speaking_rate_wpm' not in analysis:
+                t_start = turn.get(start_key)
+                t_end = turn.get(end_key)
+                if t_start is not None and t_end is not None:
+                    duration_min = (float(t_end) - float(t_start)) / 1000.0 / 60.0
+                    if duration_min > 0.001:
+                        analysis['speaking_rate_wpm'] = len(words) / duration_min
+                    else:
+                        analysis['speaking_rate_wpm'] = 0.0
+
 
     def analyze_all(self) -> dict[str, Any]:
         """Run all analyses for BOTH student and teacher with comparisons"""
@@ -234,10 +296,23 @@ class SessionAnalyzer:
             turns = self.student_turns_list
         rates: list[dict[str, int | float]] = []
         for turn in turns:
-            wpm = cast(dict[str, object], turn.get('analysis', {})).get('speaking_rate_wpm')
-            if wpm:
-                rates.append({'turn_order': cast(int, turn.get('turn_order', 0)), 'wpm': float(cast(float, wpm))})
-        if not rates: return {'error': 'No speaking rate data'}
+            # Now safely relies on enriched metadata
+            analysis = cast(dict[str, object], turn.get('analysis', {}))
+            wpm = analysis.get('speaking_rate_wpm')
+            
+            if wpm is not None and float(wpm) > 0:
+                rates.append({'turn_order': cast(int, turn.get('turn_order', 0)), 'wpm': float(wpm)})
+
+        if not rates: return {'error': 'No speaking rate data', 'average_wpm': 0.0}
+
+        wpms = [float(r['wpm']) for r in rates]
+        avg_wpm = sum(wpms) / len(wpms)
+        return {
+            'average_wpm': round(avg_wpm, 1),
+            'min_wpm': round(min(wpms), 1),
+            'max_wpm': round(max(wpms), 1),
+            'turn_count': len(turns)
+        }
 
         wpms = [float(r['wpm']) for r in rates]
         avg_wpm = sum(wpms) / len(wpms)

@@ -8,7 +8,7 @@ import os
 import json
 import httpx
 import logging
-from typing import Any
+from collections.abc import Mapping
 from .schemas import Turn
 
 # Set up logging
@@ -22,10 +22,10 @@ MCP_SECRET = os.getenv("MCP_SECRET")
 def push_to_semantic_server(
     student_name: str,
     turns: list[Turn], 
-    analysis_context: dict[str, Any],
+    analysis_context: Mapping[str, object],
     session_id: str | None = None,
     notes: str = ""
-) -> dict[str, Any]:
+) -> Mapping[str, object]:
     """
     The Handoff: Pushes local analysis data to the Central Castle (GitEnglishHub).
     
@@ -77,7 +77,7 @@ def push_to_semantic_server(
         # 2. Execute the Push
         with httpx.Client(timeout=30.0) as client:
             response = client.post(url, json=payload, headers=headers)
-            response.raise_for_status()
+            _ = response.raise_for_status()
             
             data = response.json()
             logger.info("✅ Data handed off to GitEnglishHub successfully.")

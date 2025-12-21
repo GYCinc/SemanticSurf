@@ -4,15 +4,22 @@ import asyncio
 import uuid
 import logging
 import hashlib
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import TypedDict, cast, Any
+from collections.abc import Mapping, Sequence
+
+# Ensure workspace root is on sys.path so `import AssemblyAIv2.*` works even when running as a script.
+WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
+if str(WORKSPACE_ROOT) not in sys.path:
+    sys.path.append(str(WORKSPACE_ROOT))
 
 # Load environment early
 from dotenv import load_dotenv
 _ = load_dotenv()
 
-import assemblyai as aai
+import assemblyai as aai # type: ignore
 import httpx
 
 # --- Setup Logging ---
@@ -73,7 +80,7 @@ def calculate_file_hash(file_path: str | Path) -> str | None:
 
 def get_existing_students() -> list[str]:
     """Load students from local cache (student_profiles.json)."""
-    students = set()
+    students: set[str] = set()
     try:
         if os.path.exists("student_profiles.json"):
             with open("student_profiles.json", "r") as f:
@@ -88,13 +95,14 @@ def get_existing_students() -> list[str]:
     cleaned = {s for s in students if s and s not in systemic_filters and not s.startswith("Session_")}
     return sorted(list(cleaned))
 
-async def send_to_gitenglish(action: str, student_id_or_name: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+async def send_to_gitenglish(action: str, student_id_or_name: str, params: Mapping[str, object] | None = None) -> Mapping[str, object]:
     if not GITENGLISH_MCP_SECRET:
-        logger.error("❌ MCP_SECRET not set")
+        # logger.error("❌ MCP_SECRET not set") # Removed to reduce noise if intentional
         return {"success": False, "error": "MCP_SECRET missing"}
     
     url = f"{GITENGLISH_API_BASE}/api/mcp"
-    headers = {"Authorization": GITENGLISH_MCP_SECRET, "Content-Type": "application/json"}
+    # GitEnglishHub expects: Authorization: Bearer <MCP_SECRET>
+    headers = {"Authorization": f"Bearer {GITENGLISH_MCP_SECRET}", "Content-Type": "application/json"}
     payload = {"action": action, "studentId": student_id_or_name, "params": params or {}}
     
     try:
@@ -104,7 +112,7 @@ async def send_to_gitenglish(action: str, student_id_or_name: str, params: dict[
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def perform_batch_diarization(audio_path: str, student_name: str) -> dict[str, Any] | None:
+async def perform_batch_diarization(audio_path: str, student_name: str) -> Mapping[str, object] | None:
     """
     High-Definition Batch Diarization (DUAL-PASS PROTOCOL).
     Pass 1: Get Speaker Labels (Requires Punctuation).
@@ -204,7 +212,6 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> dict[
                     diar_idx = temp_idx # Safe to advance
                     temp_idx += 1
                     continue
-                
                 if d['start'] > w_end:
                     # Diarized word starts after this raw word ends. No overlap possible anymore.
                     break
@@ -259,7 +266,7 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> dict[
         sentences = []
         try:
              # Try to get sentences if available
-             sentences = [{"text": s.text, "start": s.start, "end": s.end} for s in t_diar.get_sentences()]
+             sentences = [{"text": s.text, "start": s.start, "end": s.end} for s in t_diar.get_sentences()] # type: ignore
         except:
              # Fallback if get_sentences() fails or isn't available
              pass
@@ -279,29 +286,29 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> dict[
         logger.error(traceback.format_exc())
         return None
 
-async def process_and_upload(audio_path: str, student_name: str, notes: str = ""):
+async def process_and_upload(audio_path: str, student_name: str, notes: str = "") -> Mapping[str, object]:
     logger.info(f"🚀 Batch Ingest: {audio_path} for {student_name}")
     
     # 1. Diarize
     diar_result = await perform_batch_diarization(audio_path, student_name)
     if not diar_result:
         logger.error("❌ Processing failed.")
-        return
+        return {"success": False, "error": "diarization_failed"}
 
-    all_turns = diar_result["turns"]
-    duration = diar_result["duration"]
+    all_turns = cast(list[SessionTurn], diar_result["turns"])
+    duration = cast(float, diar_result["duration"])
 
     # 2. Local Analysis (Tiered Suite)
-    from analyzers.session_analyzer import SessionAnalyzer
-    from analyzers.pos_analyzer import POSAnalyzer
-    from analyzers.ngram_analyzer import NgramAnalyzer
-    from analyzers.verb_analyzer import VerbAnalyzer
-    from analyzers.article_analyzer import ArticleAnalyzer
-    from analyzers.amalgum_analyzer import AmalgumAnalyzer
-    from analyzers.comparative_analyzer import ComparativeAnalyzer
-    from analyzers.phenomena_matcher import ErrorPhenomenonMatcher
-    from analyzers.preposition_analyzer import PrepositionAnalyzer
-    from analyzers.learner_error_analyzer import LearnerErrorAnalyzer
+    from AssemblyAIv2.analyzers.session_analyzer import SessionAnalyzer
+    from AssemblyAIv2.analyzers.pos_analyzer import POSAnalyzer
+    from AssemblyAIv2.analyzers.ngram_analyzer import NgramAnalyzer
+    from AssemblyAIv2.analyzers.verb_analyzer import VerbAnalyzer
+    from AssemblyAIv2.analyzers.article_analyzer import ArticleAnalyzer
+    from AssemblyAIv2.analyzers.amalgum_analyzer import AmalgumAnalyzer
+    from AssemblyAIv2.analyzers.comparative_analyzer import ComparativeAnalyzer
+    from AssemblyAIv2.analyzers.phenomena_matcher import ErrorPhenomenonMatcher
+    from AssemblyAIv2.analyzers.preposition_analyzer import PrepositionAnalyzer
+    from AssemblyAIv2.analyzers.learner_error_analyzer import LearnerErrorAnalyzer
         
     # Construct unified JSON for analyzers
     session_json = {
@@ -320,33 +327,53 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
     tutor_text = main_analyzer.teacher_full_text
     
     logger.info("🧠 Running Tiered Analysis Suite...")
-    pos_counts = POSAnalyzer().analyze(student_text)
-    pos_ratios = POSAnalyzer().get_ratios(student_text)
-    ngram_data = NgramAnalyzer().analyze(student_text)
-    verb_data = VerbAnalyzer().analyze(student_text)
-    article_data = ArticleAnalyzer().analyze(student_text)
-    prep_data = PrepositionAnalyzer().analyze(student_text)
-    learner_data = LearnerErrorAnalyzer().analyze(student_text)
+    # These analyzers are allowed to be optional (dev machines may not have all NLP deps).
+    pos_counts: Mapping[str, object] = {}
+    pos_ratios: Mapping[str, object] = {}
+    ngram_data: Mapping[str, object] = {}
+    verb_data: Mapping[str, object] = {}
+    article_data: Sequence[object] = []
+    prep_data: Sequence[object] = []
+    learner_data: Sequence[object] = []
+    try:
+        pos_counts = POSAnalyzer().analyze(student_text)
+        pos_ratios = POSAnalyzer().get_ratios(student_text)
+        ngram_data = NgramAnalyzer().analyze(student_text)
+        verb_data = VerbAnalyzer().analyze(student_text)
+        article_data = ArticleAnalyzer().analyze(student_text)
+        prep_data = PrepositionAnalyzer().analyze(student_text)
+        learner_data = LearnerErrorAnalyzer().analyze(student_text)
+    except ModuleNotFoundError as e:
+        logger.warning(f"⚠️ Optional NLP dependency missing; continuing without tiered suite: {e}")
     
-    comp_data = ComparativeAnalyzer().compare(
-        student_data={"pos": pos_counts, "ngrams": ngram_data, "text": student_text},
-        tutor_data={"pos": POSAnalyzer().analyze(tutor_text), "ngrams": NgramAnalyzer().analyze(tutor_text), "text": tutor_text}
-    )
+    comp_data: dict[str, Any] = {}
+    try:
+        comp_data = cast(dict[str, Any], ComparativeAnalyzer().compare(
+            student_data={"pos": pos_counts, "ngrams": ngram_data, "text": student_text},
+            tutor_data={
+                "pos": POSAnalyzer().analyze(tutor_text),
+                "ngrams": NgramAnalyzer().analyze(tutor_text),
+                "text": tutor_text,
+            },
+        ))
+    except ModuleNotFoundError as e:
+        logger.warning(f"⚠️ Comparative analysis skipped (missing optional dependency): {e}")
     
     detected_errors = []
     # Standardize Article Errors (List)
-    if isinstance(article_data, list):
-        detected_errors.extend([{'error_type': 'Article Error', 'text': e['match']} for e in article_data])
+    if isinstance(article_data, (list, tuple)):
+        detected_errors.extend([{'error_type': 'Article Error', 'text': cast(dict[str, object], e)['match']} for e in article_data])
     
     # Standardize Verb Errors
-    verb_errs = verb_data.get('irregular_errors', [])
-    detected_errors.extend([{'error_type': 'Verb Error', 'text': e['verb']} for e in verb_errs])
+    verb_errs = cast(dict[str, object], verb_data).get('irregular_errors', [])
+    if isinstance(verb_errs, list):
+        detected_errors.extend([{'error_type': 'Verb Error', 'text': cast(dict[str, object], e)['verb']} for e in verb_errs])
 
     # Standardize Preposition Errors
-    detected_errors.extend([{'error_type': 'Preposition Error', 'text': e['item']} for e in prep_data])
+    detected_errors.extend([{'error_type': 'Preposition Error', 'text': cast(dict[str, object], e)['item']} for e in prep_data])
 
     # Standardize Learner Errors (PELIC)
-    detected_errors.extend([{'error_type': f"Learner: {e.get('category')}", 'text': e['item']} for e in learner_data])
+    detected_errors.extend([{'error_type': f"Learner: {cast(dict[str, object], e).get('category')}", 'text': cast(dict[str, object], e)['item']} for e in learner_data])
     
     # Pattern Matching
     try:
@@ -355,50 +382,32 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
             detected_errors.append({'error_type': f"Pattern: {m.get('category')}", 'text': m.get('item')})
     except: pass
 
-    analysis_context = {
-        "caf_metrics": basic_metrics.get('caf_metrics') or "DATA_MISSING",
+    analysis_context: dict[str, Any] = {
+        "caf_metrics": cast(dict[str, Any], basic_metrics).get('student_metrics', {}).get('caf_metrics') or "DATA_MISSING",
         "comparison": comp_data,
         "register_analysis": {"scores": AmalgumAnalyzer().analyze_register(student_text), "classification": AmalgumAnalyzer().get_genre_classification(student_text)},
         "detected_errors": detected_errors,
         "pos_summary": pos_ratios
     }
 
-    # 3. LLM Gateway Synthesis (Claude 4.5 for Batch)
-    from analyzers.llm_gateway import run_lm_gateway_query
-    # Create temp file for lemur_query
-    temp_path = Path(f"batch_staging_{uuid.uuid4().hex}.json")
-    with open(str(temp_path), 'w') as f: json.dump(session_json, f)
-            
-    # Run analysis (Note: lm_gateway is currently set to gemini-1.5-pro, 
-    # but we can override model here if we want maximum depth)
-    from analyzers.schemas import Turn
-    turn_objs: list[Turn] = []
-    for i, t in enumerate(all_turns or []):
-        turn_objs.append(Turn(
-            turn_order=i + 1,
-            transcript=t['transcript'],
-            speaker=t['speaker'],
-            timestamp=datetime.fromtimestamp(t['start'] / 1000).isoformat() if t.get('start') else datetime.now().isoformat()
-        ))
-
-    analysis_results = run_lm_gateway_query(
-        student_name=student_name,
-        turns=turn_objs,
-        analysis_context=analysis_context,
-        session_id=str(session_json.get("session_id", "")),
-        notes=notes
-    )
-    if temp_path.exists(): temp_path.unlink()
-
-    if isinstance(analysis_results, dict):
-        gateway_data = analysis_results.get('lm_analysis', {})
-    else:
-        gateway_data = {}
+    # 3. LLM_ANALYSIS (optional)
+    # IMPORTANT: Do NOT call the legacy Python "LLM Gateway" during ingestion.
+    # The file [`analyzers/llm_gateway.py`](AssemblyAIv2/analyzers/llm_gateway.py:1) currently
+    # performs a *push* to GitEnglishHub (`sanity.createLessonAnalysis`) and is not a pure
+    # "LLM synthesis" function. Calling it here can create duplicate/invalid artifacts and
+    # break the ingest flow.
+    llm_analysis: dict[str, object] = {
+        "schemaVersion": "0.1.0",
+        "termination": {"reason": "skipped", "detail": "LLM_ANALYSIS disabled for stable ingest"},
+        "response": "",
+        "annotated_errors": [],
+        "student_profile": {},
+    }
 
     # 4. Final Handoff to Hub API
     error_phenomena = []
-    if isinstance(gateway_data, dict):
-        annotated_errors = gateway_data.get('annotated_errors', [])
+    if isinstance(llm_analysis, dict):
+        annotated_errors = llm_analysis.get('annotated_errors', [])
         if isinstance(annotated_errors, list):
             for err in annotated_errors:
                 if isinstance(err, dict):
@@ -420,15 +429,20 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
             })
 
     params = {
-        'turns': [{"speaker": t.get("speaker"), "transcript": t.get("transcript"), "words": t.get("words")} for t in all_turns if isinstance(t, dict)],
-        'transcriptText': "\n".join([f"{t['speaker']}: {t['transcript']}" for t in all_turns if isinstance(t, dict)]),
+        # Preserve the full turn shape (incl. timestamps/confidence) for downstream metrics.
+        'turns': all_turns,
+        'transcriptText': "\n".join([f"{t['speaker']}: {t['transcript']}" for t in all_turns]),
         'punctuatedTranscript': diar_result.get("punctuated_text", ""),
         'sentences': diar_result.get("sentences", []),
         'sessionDate': session_json['start_time'],
         'duration': duration,
-        'lmAnalysis': gateway_data.get('response', 'No reasoning provided.') if isinstance(gateway_data, dict) else 'No reasoning provided.',
-        'errorPhenomena': error_phenomena,
-        'studentProfile': gateway_data.get('student_profile', {}) if isinstance(gateway_data, dict) else {},
+        # Contract expected by GitEnglishHub action [`ingest.createSession`](gitenglishhub/lib/petty-dantic/action-registry.ts:236)
+        'llmGatewayAnalysis': llm_analysis.get('response', ''),
+        'llmGatewayPhenomena': error_phenomena,
+        'studentProfile': llm_analysis.get('student_profile', {}),
+        # Preserve the full LLM_ANALYSIS envelope for audit/debugging.
+        'llmAnalysis': llm_analysis,
+        'localAnalysis': analysis_context,
         'notes': notes,
         'fileHash': calculate_file_hash(audio_path)
     }
@@ -439,6 +453,8 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
         logger.info(f"🎉 Ingestion Complete! Session: {result.get('sessionId')}")
     else:
         logger.error(f"❌ Ingestion failed: {result.get('error')}")
+
+    return result
 
 async def main():
     print("\n" + "="*60)
@@ -463,7 +479,7 @@ async def main():
         return
 
     notes = input("\n📝 Session Notes (Optional): ").strip()
-    await process_and_upload(audio_path, student_name, notes)
+    _ = await process_and_upload(audio_path, student_name, notes)
 
 if __name__ == "__main__":
     try: asyncio.run(main())

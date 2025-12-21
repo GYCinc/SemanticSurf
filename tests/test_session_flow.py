@@ -7,7 +7,20 @@ import logging
 from datetime import datetime
 
 # Add parent directory to path to import main
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add parent directory of the project to path to allow 'from AssemblyAIv2 import ...'
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# Mock assemblyai BEFORE importing main to avoid Pydantic/Config errors
+mock_aai = MagicMock()
+sys.modules["assemblyai"] = mock_aai
+sys.modules["assemblyai.streaming"] = mock_aai
+sys.modules["assemblyai.streaming.v3"] = mock_aai
+
+# Mock internal dependencies that cause relative import issues
+mock_analyzers = MagicMock()
+sys.modules["AssemblyAIv2.analyzers"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.llm_gateway"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.schemas"] = mock_analyzers
 
 # Import functions to test
 from AssemblyAIv2.main import (
