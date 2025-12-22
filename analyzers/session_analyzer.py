@@ -90,7 +90,10 @@ class SessionAnalyzer:
 
     def __init__(self, session_data: Mapping[str, Any]):
         self.session = session_data
+        # Support both 'turns' and 'speaker_segments'
         self.turns = cast(list[dict[str, object]], session_data.get('turns', []))
+        if not self.turns:
+            self.turns = cast(list[dict[str, object]], session_data.get('speaker_segments', []))
 
         # --- Find the Student AND Teacher ---
         self.speaker_map = cast(dict[str, object], session_data.get('speaker_map', {}))
@@ -100,21 +103,48 @@ class SessionAnalyzer:
         self.student_label = 'Unknown'
         self.teacher_label = 'Unknown'
         
+        # If speaker_map is missing, try to infer it from turns or direct usage
+        if not self.speaker_map:
+            # Check if speakers are identified directly in turns
+            speakers = set()
+            for t in self.turns:
+                spk = t.get('speaker')
+                if spk:
+                    speakers.add(str(spk))
+            
+            # Simple inference: map speaker label to themselves if they match names
+            for s in speakers:
+                self.speaker_map[s] = s
+
         for label, name in self.speaker_map.items():
             if name == self.student_name:
                 self.student_label = label
             elif name == self.teacher_name:
                 self.teacher_label = label
+        
+        # Fallback: Check for "Student"/"Teacher" literals if specific names didn't match
+        if self.student_label == 'Unknown':
+            for label, name in self.speaker_map.items():
+                if "Student" in name or "Student" in label:
+                    self.student_label = label
+                    break
+        
+        if self.teacher_label == 'Unknown':
+            for label, name in self.speaker_map.items():
+                if "Teacher" in name or "Teacher" in label:
+                    self.teacher_label = label
+                    break
 
         # Student setup
         if self.student_label == 'Unknown':
             logger.warning("Could not find student label in speaker_map. Analysis may be empty.")
             self.student_turns = []
+            self.student_turns_list = []  # Fix AttributeError
             self.student_full_text = ""
         else:
             logger.info(f"Analyzer: Found Student '{self.student_name}' with label '{self.student_label}'")
             self.student_turns_list = cast(list[dict[str, Any]], self._get_turns_for_speaker(self.student_label))
-            self.student_full_text = " ".join([cast(str, t.get('transcript', '')) for t in self.student_turns_list])
+            self.student_full_text = " ".join([cast(str, t.get('transcript', t.get('text', ''))) for t in self.student_turns_list])
 
         # Teacher setup
         if self.teacher_label == 'Unknown':
@@ -124,7 +154,7 @@ class SessionAnalyzer:
         else:
             logger.info(f"Analyzer: Found Teacher '{self.teacher_name}' with label '{self.teacher_label}'")
             self.teacher_turns = cast(list[dict[str, Any]], self._get_turns_for_speaker(self.teacher_label))
-            self.teacher_full_text = " ".join([cast(str, t.get('transcript', '')) for t in self.teacher_turns])
+            self.teacher_full_text = " ".join([cast(str, t.get('transcript', t.get('text', ''))) for t in self.teacher_turns])
 
         # --- Enriched Metadata (Auto-Calculate if missing) ---
         self._enrich_metadata()

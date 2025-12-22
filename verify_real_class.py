@@ -15,8 +15,12 @@ def test_analyzers_on_real_data():
     json_files = glob.glob('AssemblyAIv2/sessions/**/*.json', recursive=True)
     if not json_files:
         print("❌ No JSON session files found in AssemblyAIv2/sessions")
-        # Fallback to a hardcoded check if we find one during the 'find' command
-        return
+        # Fallback to test_session.json
+        if os.path.exists('AssemblyAIv2/test_session.json'):
+             print("⚠️ Falling back to AssemblyAIv2/test_session.json")
+             json_files = ['AssemblyAIv2/test_session.json']
+        else:
+             return
 
     latest_json = max(json_files, key=os.path.getctime)
     print(f"📂 Loading real session data: {latest_json}")
@@ -44,19 +48,37 @@ def test_analyzers_on_real_data():
         print(f"❌ SessionAnalyzer Failed: {e}")
         import traceback
         traceback.print_exc()
+        # If session analyzer fails, we cannot proceed with dependent analyzers
+        return
 
     # 2. Test VerbAnalyzer (if applicable)
     print("\n----- Testing VerbAnalyzer -----")
     try:
         # VerbAnalyzer usually takes different input, check signature
         # Assuming it takes text or turns
-        student_text = results.get('student_metrics', {}).get('advanced_local_analysis', {}).get('text', '') # This path might be wrong, checking full text
-        # Or maybe it takes the full text from the analyzer
+        # 'results' and 'sa' are now guaranteed to be defined if we reached here
+        
+        # Try to find the text source
+        student_text = ""
         if hasattr(sa, 'student_full_text'):
-             va = VerbAnalyzer(sa.student_full_text)
-             verb_results = va.analyze()
-             print(f"✅ VerbAnalyzer Success")
-             print(f"   Tense Distribution: {verb_results.get('tense_distribution')}")
+             student_text = sa.student_full_text
+        elif results and 'student_metrics' in results:
+             student_text = results.get('student_metrics', {}).get('advanced_local_analysis', {}).get('text', '')
+        
+        if student_text:
+             # Check if VerbAnalyzer accepts text (assuming yes based on usage)
+             # If VerbAnalyzer was imported successfully
+             if 'VerbAnalyzer' in globals():
+                va = VerbAnalyzer()
+                verb_results = va.analyze(student_text)
+                print(f"✅ VerbAnalyzer Success")
+                print(f"   Irregular Errors: {len(verb_results.get('irregular_errors', []))}")
+                print(f"   Total Verbs Found: {verb_results.get('total_verbs_found')}")
+             else:
+                 print("⚠️ VerbAnalyzer class not found/imported")
+        else:
+            print("⚠️ Could not extract student text for VerbAnalyzer")
+            
     except Exception as e:
         # It's possible VerbAnalyzer isn't set up this way, strictly catching to not block
         print(f"⚠️ VerbAnalyzer test skipped/failed (check signature): {e}")

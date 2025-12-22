@@ -287,11 +287,11 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
                     diar_map.append({
                         'start': w.start,
                         'end': w.end,
-                        'speaker': utt.speaker
+                        'speaker': utt.speaker or "Unknown"
                     })
         
         # Sort diar_map by start time for efficient searching (though words should be sorted already)
-        diar_map.sort(key=lambda x: x['start'])
+        diar_map.sort(key=lambda x: float(x['start']))
         
         # Build Final Turns
         # We will reconstruct turns based on SPEAKER CHANGES in the merged stream.
@@ -317,17 +317,20 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
             temp_idx = diar_idx
             while temp_idx < len(diar_map):
                 d = diar_map[temp_idx]
-                if d['end'] < w_start:
+                d_end = float(d['end'])
+                d_start = float(d['start'])
+                
+                if d_end < w_start:
                     # Diarized word ended before this raw word started. Move pointer.
                     diar_idx = temp_idx # Safe to advance
                     temp_idx += 1
                     continue
-                if d['start'] > w_end:
+                if d_start > w_end:
                     # Diarized word starts after this raw word ends. No overlap possible anymore.
                     break
                 
                 # Overlap found!
-                found_speaker = cast(str, d['speaker'])
+                found_speaker = str(d['speaker'])
                 break # Take first overlap
             
             if not found_speaker:
@@ -439,6 +442,28 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
     all_turns = cast(list[SessionTurn], diar_result["turns"])
     duration = cast(float, diar_result["duration"])
 
+    # --- SPEAKER NORMALIZATION ---
+    # Ensure speakers are "A", "B", etc. to match SessionAnalyzer expectations
+    unique_speakers = sorted(list(set(t['speaker'] for t in all_turns)))
+    # If speakers are already single letters A, B, keep them. Otherwise remap.
+    # Note: If we have "Speaker A", "Speaker B", this will remap them to A, B.
+    # If we have "0", "1", it maps to A, B.
+    speaker_remap = {}
+    for i, s in enumerate(unique_speakers):
+        # specific check if it's already a single letter to avoid A->A redundant map or A->B accidental shift if sorted wrong
+        # But simple sequential remapping is usually safest if we don't trust the labels
+        speaker_remap[s] = chr(65 + i) # A, B, C...
+
+    logger.info(f"🔄 Remapping Speakers: {speaker_remap}")
+    
+    for t in all_turns:
+        t['speaker'] = speaker_remap.get(t['speaker'], t['speaker'])
+        # Also update word-level speaker labels if they exist
+        if 'words' in t:
+            for w in t['words']:
+                if 'speaker' in w:
+                     w['speaker'] = speaker_remap.get(w['speaker'], w['speaker'])
+
     # 2. Local Analysis (Tiered Suite)
     from AssemblyAIv2.analyzers.session_analyzer import SessionAnalyzer
     from AssemblyAIv2.analyzers.pos_analyzer import POSAnalyzer
@@ -525,6 +550,8 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
 
     analysis_context: dict[str, Any] = {
         "caf_metrics": cast(dict[str, Any], basic_metrics).get('student_metrics', {}).get('caf_metrics') or "DATA_MISSING",
+        "student_metrics": cast(dict[str, Any], basic_metrics).get('student_metrics', {}),
+        "teacher_metrics": cast(dict[str, Any], basic_metrics).get('teacher_metrics', {}),
         "comparison": comp_data,
         "register_analysis": {"scores": AmalgumAnalyzer().analyze_register(student_text), "classification": AmalgumAnalyzer().get_genre_classification(student_text)},
         "detected_errors": detected_errors,

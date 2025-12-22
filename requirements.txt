@@ -7,3 +7,4 @@ pyaudio
 python-dotenv
 textblob
 websockets
+nltk
