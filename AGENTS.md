@@ -2,8 +2,6 @@
 
 Hello Agent. Welcome to the Semantic Surfer repository. This is a "Vibe Coding" environment. We prioritize flow, aesthetics, and reliability over boilerplate and complex build chains.
 
-Follow these rules to keep the system healthy and the user happy.
-
 ## 🌊 The Vibe Coding Philosophy
 
 1.  **No Build Steps for Frontend:**
@@ -36,6 +34,20 @@ The UI (`viewer2.html`) must adhere to the **Crimson Glass** aesthetic.
     *   **Hardcode Critical Styles:** Put basic background/text colors in a `<style>` block in `<head>`. If Tailwind fails to load, the user shouldn't see a white screen.
     *   **Window Drag:** The window is frameless. The header needs `-webkit-app-region: drag`. Buttons inside it need `-webkit-app-region: no-drag`.
 
+## 🧠 The Six Notable Noetics (Immutable)
+
+The system enforces strictly **6 User-Facing Categories**. These are the "Six Notable Noetics".
+All "nitty-gritty" linguistic phenomena (Petty Dantic) must map to one of these.
+
+1.  **Grammar** (Morphology, Syntax, Structure)
+2.  **Vocabulary** (Lexical Choice, Precision)
+3.  **Phrasal Verbs** (Multi-word verbs)
+4.  **Collocations** (Natural pairings)
+5.  **Idioms & Phrases** (Fixed expressions, Cultural sayings)
+6.  **Fluency & Flow** (Pragmatics, Discourse Markers, Tone, Speed)
+
+**Do not introduce "Pronunciation" or "Structure" as top-level categories.** They are internal details mapped to the above (e.g., Pronunciation -> Fluency & Flow, Structure -> Grammar).
+
 ## 🏗️ Architecture & Safety
 
 ### Frontend (`viewer2.html`)
@@ -44,19 +56,11 @@ The UI (`viewer2.html`) must adhere to the **Crimson Glass** aesthetic.
 *   **Race Conditions:** The UI receives `partial` and `final` transcripts. Handle them robustly to avoid flickering.
 
 ### Backend (`main.py` & `ingest_audio.py`)
+*   **Pipeline:**
+    *   `main.py` handles Real-time Websockets & Audio Streaming.
+    *   `ingest_audio.process_and_upload` is the canonical handoff function triggered on "End Session".
 *   **Speaker Labels:** Strictly use **"Speaker A"** and **"Speaker B"**.
     *   **Never** map these to names like "Student" or "Teacher" in the backend. Diarization relies on A/B consistency.
-*   **Schemas (`schemas.py` / Petty Dantic):**
-    *   The 8 Classification Categories are **IMMUTABLE**:
-        1. Phrasal Verbs
-        2. Vocabulary
-        3. Expressions
-        4. Grammar
-        5. Pronunciation
-        6. Flow
-        7. Discourse
-        8. Sociolinguistics
-    *   Do not add new categories without explicit user permission.
 
 ### Environment
 *   **Environment Variables:** Stored in `.env`.
