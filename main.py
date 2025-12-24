@@ -12,6 +12,46 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast, List, Optional, TypedDict, Dict
 
+# --- 0. CRITICAL SYSTEM ENFORCEMENT ---
+# The following block strictly enforces the use of Python 3.13.11.
+# This check is performed immediately upon module load to prevent
+# any execution in an unsupported environment.
+
+# Define the required version tuple (Major, Minor, Micro)
+# STRICT REQUIREMENT: Python 3.13.11
+REQUIRED_VERSION_INFO = (3, 13, 11)
+
+# Check the current system version against the requirement.
+# sys.version_info returns a named tuple (major, minor, micro, releaselevel, serial).
+# We only care about major, minor, and micro for this enforcement.
+if sys.version_info[:3] != REQUIRED_VERSION_INFO:
+    # Construct a clear error message with current and required versions.
+    current_ver = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    required_ver = f"{REQUIRED_VERSION_INFO[0]}.{REQUIRED_VERSION_INFO[1]}.{REQUIRED_VERSION_INFO[2]}"
+
+    error_msg = (
+        "\n"
+        "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+        "CRITICAL RUNTIME ERROR: INCORRECT PYTHON VERSION DETECTED\n"
+        "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
+        f"The system requires exactly: Python {required_ver}\n"
+        f"You are currently running:   Python {current_ver}\n\n"
+        "This enforcement is hard-coded to prevent compatibility issues.\n"
+        f"Please install Python {required_ver} and ensure it is the default interpreter.\n\n"
+        "Process aborted immediately.\n"
+    )
+
+    # Print to stderr to ensure visibility even if stdout is buffered or redirected.
+    sys.stderr.write(error_msg)
+
+    # Force an immediate exit with status code 1.
+    sys.exit(1)
+
+# Log success if verify passes (will only run if sys.exit didn't happen)
+# We can't use logger yet as it's not configured, so we use print/stderr.
+# sys.stderr.write(f"✅ Python Runtime Verified: {sys.version.split()[0]}\n")
+
+
 from dotenv import load_dotenv
 load_dotenv()
 
