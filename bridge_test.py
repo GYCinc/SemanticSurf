@@ -1,6 +1,6 @@
 from typing import Any
 from pydantic import ValidationError
-from .analyzers.schemas import LanguageFeedback, OfficialCategory, LinguisticSubcategory
+from analyzers.schemas import LanguageFeedback, OfficialCategory, LinguisticSubcategory
 
 # 1. The "Dump" from the TheGuru (Simulated based on UNIVERSAL_GURU_PROMPT.txt)
 # This is what the LLM currently thinks it should output
@@ -14,7 +14,7 @@ the_guru_dump = {
     ]
 }
 
-# 2. The "Bridge" logic (Simulated from castle_server.py / live_feedback_agent.py)
+# 2. The "Bridge" logic (Simulated from semantic_server.py / llm_gateway.py)
 print("🌉 ATTEMPTING TO VALIDATE DATA...")
 
 def bridge_to_petty_dantic(raw_data):

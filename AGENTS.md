@@ -55,10 +55,10 @@ All "nitty-gritty" linguistic phenomena (Petty Dantic) must map to one of these.
 *   **Error Overlays:** Maintain `window.onerror` handlers to catch "White Screen of Death" issues (e.g., CDN failures).
 *   **Race Conditions:** The UI receives `partial` and `final` transcripts. Handle them robustly to avoid flickering.
 
-### Backend (`main.py` & `ingest_audio.py`)
+### Backend (`main.py` & `upload_audio_aai.py`)
 *   **Pipeline:**
     *   `main.py` handles Real-time Websockets & Audio Streaming.
-    *   `ingest_audio.process_and_upload` is the canonical handoff function triggered on "End Session".
+    *   `upload_audio_aai.process_and_upload` is the canonical handoff function triggered on "End Session".
 *   **Speaker Labels:** Strictly use **"Speaker A"** and **"Speaker B"**.
     *   **Never** map these to names like "Student" or "Teacher" in the backend. Diarization relies on A/B consistency.
 

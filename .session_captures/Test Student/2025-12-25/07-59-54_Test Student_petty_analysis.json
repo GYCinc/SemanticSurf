@@ -1,0 +1,119 @@
+{
+  "caf_metrics": {
+    "error": "No turns to analyze"
+  },
+  "student_metrics": {
+    "speaking_rate": {
+      "error": "No speaking rate data",
+      "average_wpm": 0.0
+    },
+    "pauses": {
+      "message": "No pause data"
+    },
+    "complexity_basic": {
+      "error": "No word data",
+      "total_words": 0
+    },
+    "vocabulary_analysis": {
+      "student_unique_lemmas": 0,
+      "teacher_unique_lemmas": 2,
+      "combined_unique_lemmas": 2,
+      "student_teacher_lemma_overlap": 0
+    },
+    "advanced_local_analysis": {
+      "error": "TextBlob not available or no student text."
+    },
+    "fillers": {
+      "total_fillers": 0,
+      "filler_percentage": 0,
+      "by_type": {}
+    },
+    "hesitation_patterns": {
+      "total_hesitations": 0,
+      "frequent_hesitation_words": {},
+      "details": []
+    },
+    "ngram_analysis": {
+      "error": "NLTK not available or no text",
+      "bigrams": [],
+      "trigrams": [],
+      "fourgrams": []
+    },
+    "pos_analysis": {
+      "error": "NLTK not available or no text"
+    },
+    "caf_metrics": {
+      "error": "No turns to analyze"
+    }
+  },
+  "teacher_metrics": {
+    "speaking_rate": {
+      "average_wpm": 120.0,
+      "min_wpm": 120.0,
+      "max_wpm": 120.0,
+      "turn_count": 1
+    },
+    "pauses": {
+      "message": "No pause data"
+    },
+    "complexity_basic": {
+      "total_words": 2,
+      "unique_words": 2,
+      "vocabulary_diversity": 1.0
+    },
+    "fillers": {
+      "total_fillers": 0,
+      "filler_percentage": 0.0,
+      "by_type": {}
+    }
+  },
+  "comparison": {
+    "tutor": {
+      "word_count": 2,
+      "avg_word_length": 5.0,
+      "avg_sentence_length": 2.0,
+      "lexical_diversity": 1.0,
+      "naturalness_score": 0.0,
+      "verb_ratio": 0.0,
+      "noun_ratio": 1.0,
+      "adjective_ratio": 0.0
+    },
+    "student": {
+      "word_count": 0,
+      "avg_word_length": 0.0,
+      "avg_sentence_length": 0.0,
+      "lexical_diversity": 0.0,
+      "naturalness_score": 0.0,
+      "verb_ratio": 0.0,
+      "noun_ratio": 0.0,
+      "adjective_ratio": 0.0,
+      "tutor_overlap_score": 0.0
+    },
+    "comparison": {
+      "word_count_ratio": 0.0,
+      "naturalness_gap": 0.0,
+      "lexical_diversity_gap": 1.0,
+      "avg_sentence_length_gap": 2.0,
+      "tutor_overlap_pct": 0.0
+    }
+  },
+  "register_analysis": {
+    "scores": {
+      "academic": 0.0,
+      "conversational": 0.0
+    },
+    "classification": "Neutral"
+  },
+  "detected_errors": [],
+  "pos_summary": {
+    "verb_ratio": 0.0,
+    "noun_ratio": 0.0,
+    "adjective_ratio": 0.0
+  },
+  "lexical_analysis": {
+    "words": [],
+    "raw_text": "",
+    "unknown_ratio": 0,
+    "unknown_count": 0
+  }
+}

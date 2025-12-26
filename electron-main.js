@@ -122,6 +122,21 @@ app.whenReady().then(() => {
     }
   });
 
+  // --- SANITY IPC HANDLER: Get Students ---
+  ipcMain.handle("get-sanity-students", async () => {
+    console.log("📥 IPC: get-sanity-students called");
+    try {
+      // Query to get students. Assuming type is 'student'.
+      const query = '*[_type == "student"]{name, _id} | order(name asc)'; 
+      const students = await sanityClient.fetch(query);
+      console.log(`✅ Fetched ${students ? students.length : 0} students from Sanity`);
+      return students || [];
+    } catch (error) {
+      console.error("❌ Sanity Fetch Error:", error);
+      return [];
+    }
+  });
+
   createWindow();
 
   app.on("activate", function () {

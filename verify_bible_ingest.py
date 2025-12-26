@@ -1,7 +1,15 @@
+import sys
+from pathlib import Path
 import asyncio
 import os
 import logging
-from ingest_audio import perform_batch_diarization
+
+# Add project parent to path to support 'from AssemblyAIv2 import ...'
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT.parent) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT.parent))
+
+from AssemblyAIv2.upload_audio_aai import process_and_upload, perform_batch_diarization
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -13,10 +21,12 @@ async def test_ingest():
     
     print(f"--- TESTING BIBLE COMPLIANCE ON {audio_path} ---")
     
-    # This calls the function in ingest_audio.py which we MODIFIED to enforce the Bible
-    turns, duration = await perform_batch_diarization(audio_path, student_name)
+    # This calls the function in upload_audio_aai.py which we MODIFIED to enforce the Bible
+    result = await perform_batch_diarization(audio_path, student_name)
     
-    if turns:
+    if result:
+        turns = result.get('turns', [])
+        duration = result.get('duration', 0)
         print(f"\n✅ SUCCESS! Received {len(turns)} turns.")
         print(f"Duration: {duration}s")
         

@@ -136,13 +136,38 @@
 
         let ws = null;
         let startTime = null;
+        let loadedFromSanity = false;
+
+        async function loadSanityStudents() {
+            try {
+                console.log("Fetching students from Sanity...");
+                const students = await electron.getSanityStudents();
+                if (students && students.length > 0) {
+                    console.log("✅ Loaded students from Sanity:", students);
+                    selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
+                    students.forEach(student => {
+                        const opt = document.createElement('option');
+                        opt.value = student.name; 
+                        opt.textContent = student.name;
+                        selector.appendChild(opt);
+                    });
+                    loadedFromSanity = true;
+                } else {
+                    console.warn("⚠️ No students found in Sanity. Keeping existing list if any.");
+                }
+            } catch (e) {
+                console.error("❌ Failed to load students from Sanity:", e);
+            }
+        }
 
         function connect() {
             ws = new WebSocket('ws://localhost:8765');
             ws.onopen = () => {
                 status.classList.add('active');
                 console.log('✅ Connected');
-                ws.send(JSON.stringify({ message_type: 'get_students' }));
+                // We don't ask backend for students if we expect Sanity, 
+                // but backend sends it anyway on connect.
+                // ws.send(JSON.stringify({ message_type: 'get_students' }));
             };
             ws.onclose = () => {
                 status.classList.remove('active');
@@ -153,12 +178,17 @@
                 console.log('Message:', data.message_type);
                 
                 if (data.message_type === 'student_list' && data.students) {
-                    selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
-                    data.students.forEach(name => {
-                        const opt = document.createElement('option');
-                        opt.value = name; opt.textContent = name;
-                        selector.appendChild(opt);
-                    });
+                    if (!loadedFromSanity) {
+                        console.log("Using backend student list (Sanity failed or empty)");
+                        selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
+                        data.students.forEach(name => {
+                            const opt = document.createElement('option');
+                            opt.value = name; opt.textContent = name;
+                            selector.appendChild(opt);
+                        });
+                    } else {
+                        console.log("Ignoring backend student list (Sanity loaded)");
+                    }
                 } else if (data.message_type === 'session_start') {
                     startTime = new Date();
                     emptyMsg.style.display = 'none';
@@ -200,6 +230,7 @@
         };
         endBtn.onclick = () => ws.send(JSON.stringify({ message_type: 'end_session' }));
 
+        loadSanityStudents();
         connect();
     </script>
 </body>

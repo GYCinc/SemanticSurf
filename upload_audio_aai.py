@@ -1,11 +1,14 @@
 import os
 import json
+from pathlib import Path
+from pathlib import Path
 import asyncio
 import uuid
 import logging
 import hashlib
 import sys
-from datetime import datetime
+import shutil
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TypedDict, cast, Any
 from collections.abc import Mapping, Sequence
@@ -18,14 +21,19 @@ if str(WORKSPACE_ROOT) not in sys.path:
 # Load environment early
 from dotenv import load_dotenv # type: ignore
 # Load environment properly from gitenglishhub
+# Load environment properly from gitenglishhub
 env_path = WORKSPACE_ROOT / "gitenglishhub" / ".env.local"
 if env_path.exists():
-    _ = load_dotenv(dotenv_path=env_path)
+    _ = load_dotenv(dotenv_path=env_path, override=True)
 else:
     _ = load_dotenv() # Fallback
 
 import assemblyai as aai # type: ignore
 import httpx # type: ignore
+import asyncio
+from AssemblyAIv2.analyzers.sentence_chunker import chunk_transcript
+from AssemblyAIv2.analyzers.lexical_engine import LexicalEngine
+from AssemblyAIv2.run_local_analysis import run_tiered_analysis
 
 # --- Setup Logging ---
 logging.basicConfig(
@@ -122,113 +130,78 @@ async def send_to_gitenglish(action: str, student_id_or_name: str, params: Mappi
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+def purge_old_captures(base_dir: Path, retention_days: int = 7):
+    """
+    Purges student capture directories that are older than `retention_days`.
+    This ensures local storage doesn't grow indefinitely.
+    """
+    if not base_dir.exists():
+        return
+
+    cutoff_time = datetime.now() - timedelta(days=retention_days)
+    logger.info(f"🧹 Running retention purge on {base_dir} (Cutoff: {cutoff_time.date()})")
+
+    # Traverse: .session_captures / student_name / date_folder
+    for student_dir in base_dir.iterdir():
+        if not student_dir.is_dir():
+            continue
+            
+        for date_dir in student_dir.iterdir():
+            if not date_dir.is_dir():
+                continue
+            
+            try:
+                # Parse folder name YYYY-MM-DD
+                folder_date = datetime.strptime(date_dir.name, "%Y-%m-%d")
+                if folder_date < cutoff_time:
+                    logger.info(f"🗑️ Purging old capture: {date_dir}")
+                    shutil.rmtree(date_dir)
+                    # If student dir is empty after purge, remove it too
+                    if not any(student_dir.iterdir()):
+                        student_dir.rmdir() 
+            except ValueError:
+                continue # Skip non-date folders
+
 async def generate_llm_analysis(
     student_name: str, 
     transcript_text: str, 
     user_notes: str, 
     analysis_context: dict[str, Any]
-) -> dict[str, Any]:
+):
     """
-    Generates the Session Analysis using the AssemblyAI LLM Gateway (integrated model).
+    Hands off analysis to the local Semantic Server (The Brain).
     """
-    if not AAI_API_KEY:
-        logger.warning("🚫 LLM Analysis skipped: AAI_API_KEY missing.")
-        return {
-            "schemaVersion": "0.1.0",
-            "termination": {"reason": "skipped", "detail": "API_KEY missing"},
-            "response": "Analysis Unavailable",
-            "annotated_errors": [],
-            "student_profile": {}
-        }
-        
+    logger.info(f"🧠 Handing off analysis to Semantic Server for {student_name}...")
+    
+    url = "http://localhost:8080/analyze"
+    payload = {
+        "student_name": student_name,
+        "transcript_text": transcript_text,
+        "turns": [] # We pass transcript_text for now
+    }
+    
     try:
-        # 1. Read the Universal Guru Prompt
-        prompt_path = WORKSPACE_ROOT / "AssemblyAIv2" / "UNIVERSAL_GURU_PROMPT.txt"
-        if not prompt_path.exists():
-             logger.error(f"❌ Prompt not found at {prompt_path}")
-             return {"error": "Prompt file missing"}
-
-        with open(prompt_path, "r") as f:
-            system_prompt = f.read()
-
-        # 2. Prepare Context (Hyper RAG)
-        user_message = f"""
-SESSION DATA FOR: {student_name}
-
-[LAYER 1: RAW TRANSCRIPT]
-{transcript_text}
-
-[LAYER 2: USER NOTES (GOD-TIER)]
-{user_notes if user_notes else "No specific user notes provided for this session."} 
-
-[LOCAL ANALYSIS HINTS]
-Errors detected by rule-based system: {json.dumps(analysis_context.get('detected_errors', []), default=str)}
-
-ANALYZE NOW. OUTPUT JSON ONLY.
-"""
-
-        # 3. Call LLM Gateway
-        logger.info("🦅 Connecting to AssemblyAI LLM Gateway (gemini-3-flash-preview)...")
-        
         async with httpx.AsyncClient(timeout=300.0) as client:
-            response = await client.post(
-                "https://llm-gateway.assemblyai.com/v1/chat/completions",
-                headers={
-                    "authorization": AAI_API_KEY,
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "gemini-3-flash-preview",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message}
-                    ],
-                    "max_tokens": 20000,
-                    "temperature": 0.2
-                }
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"❌ Gateway Error {response.status_code}: {response.text}")
-                return {"error": "Gateway Error"}
+            response = await client.post(url, json=payload)
+            if response.status_code == 200:
+                result = response.json()
+                llm_res = result.get("llm_analysis", {})
                 
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
-        
-        if content:
-            # Extract JSON
-            clean_content = content.strip()
-            if "```json" in clean_content:
-                clean_content = clean_content.split("```json")[1].split("```")[0].strip()
-            elif "```" in clean_content:
-                clean_content = clean_content.split("```")[1].split("```")[0].strip()
-            
-            parsed = json.loads(clean_content)
-            
-            return {
-                "termination": {"reason": "success"},
-                "response": parsed.get("session_summary", ""),
-                "annotated_errors": parsed.get("language_feedback", []),
-                "student_profile": {"boss_notes": parsed.get("boss_notes", "")},
-                "raw_output": parsed
-            }
-        
-        logger.warning("⚠️ LLM Gateway returned empty response")
-        return {
-            "schemaVersion": "0.1.0",
-            "termination": {"reason": "skipped", "detail": "Empty response"},
-            "response": "Analysis Skipped",
-            "annotated_errors": []
-        }
-
+                # Adapt Semantic Server response to local expected format
+                return {
+                    "termination": {"reason": "success"},
+                    "response": llm_res.get("session_summary", "Analysis Complete"),
+                    "annotated_errors": llm_res.get("language_feedback", []),
+                    "student_profile": {"boss_notes": llm_res.get("boss_notes", "")},
+                    "raw_output": result
+                }
+            else:
+                logger.error(f"❌ Semantic Server Error: {response.status_code}")
+                return {"error": f"Semantic Server Error {response.status_code}"}
+                
     except Exception as e:
-        logger.error(f"💥 LLM Generation Failed: {e}")
-        return {
-            "schemaVersion": "0.1.0",
-            "termination": {"reason": "error", "detail": str(e)},
-            "response": "Analysis Failed",
-            "annotated_errors": []
-        }
+        logger.error(f"💥 Failed to reach Semantic Server: {e}")
+        return {"error": str(e)}
 
 async def perform_batch_diarization(audio_path: str, student_name: str) -> Mapping[str, object] | None:
     """
@@ -292,7 +265,6 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
         punctuate=False,
         format_text=False,
         disfluencies=True,
-        sentiment_analysis=True,
         entity_detection=True
     )
 
@@ -424,6 +396,16 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
         except:
              pass
 
+        # [NEW] High-Fidelity Context Pillar: Smart Overlapping Chunks
+        # This replaces naive splitting with sentence-aware overlapping windows (Context Pillar)
+        smart_chunks = []
+        if punctuated_text:
+            try:
+                smart_chunks = chunk_transcript(punctuated_text, max_chunk_chars=4000, sentence_overlap=2)
+                logger.info(f"   🧩 Generated {len(smart_chunks)} smart context chunks (High-Fidelity).")
+            except Exception as e:
+                logger.warning(f"   ⚠️ Smart chunking failed: {e}")
+
         logger.info(f"✅ Dual-Pass Merge Complete. Turns: {len(all_turns)}")
 
         # Serialize full transcript objects for "enhanced metadata"
@@ -437,6 +419,7 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
             "duration": audio_duration,
             "punctuated_text": punctuated_text,
             "sentences": sentences,
+            "smart_chunks": smart_chunks,
             # User Requested: "every instance of the v transcript cache"
             "raw_transcript_text": t_raw.text,
             "diarized_transcript_text": t_diar.text,
@@ -500,6 +483,7 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
                 "duration": float(t_diar.audio_duration or 0.0),
                 "punctuated_text": t_diar.text or "",
                 "sentences": [], # sentences might not be easily fetchable without another call, keep simple
+                "smart_chunks": [], # Not regenerating for legacy ID fetches to save time/complexity
                 "raw_transcript_text": t_diar.text,
                 "diarized_transcript_text": t_diar.text
             }
@@ -540,107 +524,25 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
                      w['speaker'] = speaker_remap.get(w['speaker'], w['speaker'])
 
     # 2. Local Analysis (Tiered Suite)
-    from AssemblyAIv2.analyzers.session_analyzer import SessionAnalyzer
-    from AssemblyAIv2.analyzers.pos_analyzer import POSAnalyzer
-    from AssemblyAIv2.analyzers.ngram_analyzer import NgramAnalyzer
-    from AssemblyAIv2.analyzers.verb_analyzer import VerbAnalyzer
-    from AssemblyAIv2.analyzers.article_analyzer import ArticleAnalyzer
-    from AssemblyAIv2.analyzers.amalgum_analyzer import AmalgumAnalyzer
-    from AssemblyAIv2.analyzers.comparative_analyzer import ComparativeAnalyzer
-    from AssemblyAIv2.analyzers.phenomena_matcher import ErrorPhenomenonMatcher
-    from AssemblyAIv2.analyzers.preposition_analyzer import PrepositionAnalyzer
-    from AssemblyAIv2.analyzers.learner_error_analyzer import LearnerErrorAnalyzer
-        
-    # Construct unified JSON for analyzers
-    session_json = {
-        "session_id": str(uuid.uuid4()),
-        "student_name": student_name,
-        "teacher_name": "Aaron",
-        "speaker_map": {"A": "Aaron", "B": student_name}, # Heuristic
-        "start_time": datetime.now().isoformat(),
-        "turns": all_turns,
-        "notes": notes
-    }
-
-    main_analyzer = SessionAnalyzer(cast(dict[str, object], session_json))
-    basic_metrics = main_analyzer.analyze_all()
-    student_text = main_analyzer.student_full_text
-    tutor_text = main_analyzer.teacher_full_text
-    
-    logger.info("🧠 Running Tiered Analysis Suite...")
-    # These analyzers are allowed to be optional (dev machines may not have all NLP deps).
-    pos_counts: Mapping[str, object] = {}
-    pos_ratios: Mapping[str, object] = {}
-    ngram_data: Mapping[str, object] = {}
-    verb_data: Mapping[str, object] = {}
-    article_data: Sequence[object] = []
-    prep_data: Sequence[object] = []
-    learner_data: Sequence[object] = []
-    try:
-        pos_counts = POSAnalyzer().analyze(student_text)
-        pos_ratios = POSAnalyzer().get_ratios(student_text)
-        ngram_data = NgramAnalyzer().analyze(student_text)
-        verb_data = VerbAnalyzer().analyze(student_text)
-        article_data = ArticleAnalyzer().analyze(student_text)
-        prep_data = PrepositionAnalyzer().analyze(student_text)
-        learner_data = LearnerErrorAnalyzer().analyze(student_text)
-    except ModuleNotFoundError as e:
-        logger.warning(f"⚠️ Optional NLP dependency missing; continuing without tiered suite: {e}")
-    
-    comp_data: dict[str, Any] = {}
-    try:
-        comp_data = cast(dict[str, Any], ComparativeAnalyzer().compare(
-            student_data={"pos": pos_counts, "ngrams": ngram_data, "text": student_text},
-            tutor_data={
-                "pos": POSAnalyzer().analyze(tutor_text),
-                "ngrams": NgramAnalyzer().analyze(tutor_text),
-                "text": tutor_text,
-            },
-        ))
-    except ModuleNotFoundError as e:
-        logger.warning(f"⚠️ Comparative analysis skipped (missing optional dependency): {e}")
-    
-    detected_errors = []
-    # Standardize Article Errors (List)
-    if isinstance(article_data, (list, tuple)):
-        detected_errors.extend([{'error_type': 'Article Error', 'text': cast(dict[str, object], e)['match']} for e in article_data])
-    
-    # Standardize Verb Errors
-    verb_errs = cast(dict[str, object], verb_data).get('irregular_errors', [])
-    if isinstance(verb_errs, list):
-        detected_errors.extend([{'error_type': 'Verb Error', 'text': cast(dict[str, object], e)['verb']} for e in verb_errs])
-
-    # Standardize Preposition Errors
-    detected_errors.extend([{'error_type': 'Preposition Error', 'text': cast(dict[str, object], e)['item']} for e in prep_data])
-
-    # Standardize Learner Errors (PELIC)
-    detected_errors.extend([{'error_type': f"Learner: {cast(dict[str, object], e).get('category')}", 'text': cast(dict[str, object], e)['item']} for e in learner_data])
-    
-    # Pattern Matching
-    try:
-        pattern_matches = ErrorPhenomenonMatcher().match(student_text)
-        for m in pattern_matches:
-            detected_errors.append({'error_type': f"Pattern: {m.get('category')}", 'text': m.get('item')})
-    except: pass
-
-    analysis_context: dict[str, Any] = {
-        "caf_metrics": cast(dict[str, Any], basic_metrics).get('student_metrics', {}).get('caf_metrics') or "DATA_MISSING",
-        "student_metrics": cast(dict[str, Any], basic_metrics).get('student_metrics', {}),
-        "teacher_metrics": cast(dict[str, Any], basic_metrics).get('teacher_metrics', {}),
-        "comparison": comp_data,
-        "register_analysis": {"scores": AmalgumAnalyzer().analyze_register(student_text), "classification": AmalgumAnalyzer().get_genre_classification(student_text)},
-        "detected_errors": detected_errors,
-        "pos_summary": pos_ratios
-    }
+    # Refactored to separate module per architecture guidelines
+    # Passing "all 4 transcripts" (Turns, Sentences, Punctuated, Raw)
+    analysis_context = run_tiered_analysis(
+        student_name=student_name, 
+        all_turns=cast(list[dict[str, Any]], all_turns), 
+        notes=notes,
+        sentences=diar_result.get("sentences"),
+        punctuated_text=diar_result.get("punctuated_text"),
+        raw_text=diar_result.get("raw_transcript_text")
+    )
 
     # 3. LLM_ANALYSIS (Gemini 3 Flash Preview)
     transcript_full = "\n".join([f"{t['speaker']}: {t['transcript']}" for t in all_turns])
     llm_analysis = diar_result.get('llm_analysis')
     
     if llm_analysis:
-        logger.info("⚡ AI CACHE HIT! Reusing existing analysis...")
+        logger.info("⚡ LLM CACHE HIT! Reusing existing analysis...")
     else:
-        logger.info("🦅 Generating AI Session Analysis (Gemini 3 Flash Preview)...")
+        logger.info("🦅 Generating LLM via AssemblyAI (Gemini 3 Flash Preview)...")
         
         llm_analysis = await generate_llm_analysis(
             student_name=student_name,
@@ -649,7 +551,7 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
             analysis_context=analysis_context
         )
         
-        # Save AI result to cache
+        # Save LLM result to cache
         file_hash = calculate_file_hash(audio_path)
         if file_hash:
             cache_path = WORKSPACE_ROOT / "AssemblyAIv2/ingestion_cache.json"
@@ -663,7 +565,7 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
                     current_cache[file_hash]['llm_analysis'] = llm_analysis
                     with open(cache_path, "w") as f:
                         json.dump(current_cache, f, indent=2)
-                    logger.info(f"💾 AI Analysis cached for {file_hash[:8]}")
+                    logger.info(f"💾 LLM Analysis cached for {file_hash[:8]}")
             except: pass
 
     # 4. Final Handoff to Hub API
@@ -702,6 +604,8 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
                         "source": f"AI_{err.get('source_weight', 'AUTO')}"
                     })
     
+    # Extract detected errors from the analysis context
+    detected_errors = analysis_context.get('detected_errors', [])
     for err in detected_errors:
         if isinstance(err, dict):
             error_phenomena.append({
@@ -711,27 +615,83 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
                 "source": "RULE_BASED"
             })
 
+
+
+    # [NEW] PERSISTENCE LAYER: Save local artifacts as requested
+    # Changed to hidden directory .session_captures per user request
+    captures_root = WORKSPACE_ROOT / "AssemblyAIv2/.session_captures"
+    capture_dir = captures_root / student_name / datetime.now().strftime("%Y-%m-%d")
+    capture_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Run retention policy before saving new data
+    try:
+        purge_old_captures(captures_root, retention_days=7)
+    except Exception as e:
+        logger.warning(f"⚠️ Retention purge failed (non-blocking): {e}")
+
+    session_ts = datetime.now().strftime("%H-%M-%S")
+    base_filename = f"{session_ts}_{student_name}"
+
+    # Initialize params for Hub payload (moved up for local artifact usage)
     params = {
+        'localAnalysis': analysis_context,
         # Preserve the full turn shape (incl. timestamps/confidence) for downstream metrics.
         'turns': all_turns,
         'transcriptText': transcript_full,
         'punctuatedTranscript': diar_result.get("punctuated_text", ""),
         'sentences': diar_result.get("sentences", []),
-        'sessionDate': session_json['start_time'],
+        'smartChunks': diar_result.get("smart_chunks", []),
+        
+        # Metadata
+        'sessionDate': analysis_context.get('start_time', datetime.now().isoformat()),
+        'studentName': student_name,
+        'tutorName': analysis_context.get('teacher_name', "Tutor"),
         'duration': duration,
         # Contract expected by GitEnglishHub action [`ingest.createSession`](gitenglishhub/lib/petty-dantic/action-registry.ts:236)
         'llmGatewayAnalysis': llm_analysis.get('response', ''),
         'llmGatewayPhenomena': error_phenomena,
         'studentProfile': llm_analysis.get('student_profile', {}),
         # Preserve the full LLM_ANALYSIS envelope for audit/debugging.
-        'llmAnalysis': llm_analysis,
-        'localAnalysis': analysis_context,
+        'pettyLlmAnalysis': llm_analysis,
+        'pettyLocalAnalysis': analysis_context,
         'notes': notes,
         'fileHash': calculate_file_hash(audio_path),
         # Enhanced Metadata Pass-through
         'assemblyai_raw_response': diar_result.get("raw_response_diar"),
         'assemblyai_content_response': diar_result.get("raw_response_raw")
     }
+
+    try:
+        # 1. _words.json (Authoritative)
+        with open(capture_dir / f"{base_filename}_words.json", "w") as f:
+            json.dump(params['turns'], f, indent=2) # Saving full turns structure which contains words
+
+        # 2. _sentences.json
+        with open(capture_dir / f"{base_filename}_sentences.json", "w") as f:
+            json.dump(params['sentences'], f, indent=2)
+
+        # 3. _raw.txt
+        with open(capture_dir / f"{base_filename}_raw.txt", "w") as f:
+            f.write(params['transcriptText'])
+
+        # 4. _diarized.txt
+        with open(capture_dir / f"{base_filename}_diarized.txt", "w") as f:
+            f.write(params['punctuatedTranscript'])
+
+        # 5. _petty_analysis.json (Local Analysis Metrics)
+        # Renamed to 'petty_analysis' per user instruction for clarity
+        with open(capture_dir / f"{base_filename}_petty_analysis.json", "w") as f:
+            json.dump(analysis_context, f, indent=2)
+
+        # 6. _petty_llm_analysis.json (Raw LLM Response)
+        with open(capture_dir / f"{base_filename}_petty_llm_analysis.json", "w") as f:
+            json.dump(llm_analysis, f, indent=2)
+
+        logger.info(f"💾 Saved local capture artifacts to {capture_dir}")
+    except Exception as e:
+        logger.error(f"❌ Failed to save local artifacts: {e}")
+
+
     logger.info(f"📤 Sending Payload to Hub API for student: {student_name}")
     result = await send_to_gitenglish(action='ingest.createSession', student_id_or_name=student_name, params=params)
     
@@ -741,7 +701,7 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
     if result.get('success'):
         # Extract sessionId from nested data object
         api_data = cast(dict[str, Any], result.get('data', {}))
-        session_id = api_data.get('sessionId')
+        session_id = api_data.get('sessionId') or result.get('sessionId')
         logger.info(f"🎉 Ingestion Complete! Session: {session_id}")
         return {**result, "sessionId": session_id} # Flat map for legacy compatibility in tests
     else:

@@ -27,7 +27,7 @@ sys.modules["assemblyai.streaming.v3"] = MagicMock()
 sys.modules["pyaudio"] = MagicMock()
 
 # Import the target function
-from AssemblyAIv2.ingest_audio import process_and_upload
+from AssemblyAIv2.upload_audio_aai import process_and_upload
 
 class TestHandoffPipeline(unittest.IsolatedAsyncioTestCase):
     _mock_httpx_client_patcher: Any | None = None # type: ignore
@@ -37,10 +37,10 @@ class TestHandoffPipeline(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self): # type: ignore
         # Setup mocks
-        self._mock_httpx_client_patcher = patch('AssemblyAIv2.ingest_audio.httpx.AsyncClient')
+        self._mock_httpx_client_patcher = patch('AssemblyAIv2.upload_audio_aai.httpx.AsyncClient')
         self.mock_httpx_client = self._mock_httpx_client_patcher.start()
         
-        self._mock_transcriber_patcher = patch('AssemblyAIv2.ingest_audio.aai.Transcriber')
+        self._mock_transcriber_patcher = patch('AssemblyAIv2.upload_audio_aai.aai.Transcriber')
         self.mock_transcriber_cls = self._mock_transcriber_patcher.start()
 
     def tearDown(self): # type: ignore
@@ -151,7 +151,7 @@ class TestHandoffPipeline(unittest.IsolatedAsyncioTestCase):
                 # In our case, ingest_audio.py does `api_key = os.environ.get("MISTRAL_API_KEY")` inside the function, 
                 # so patch.dict above should work!
                 # BUT if we want to be safe with existing patches:
-                with patch("AssemblyAIv2.ingest_audio.GITENGLISH_MCP_SECRET", "test_secret"):
+                with patch("AssemblyAIv2.upload_audio_aai.GITENGLISH_MCP_SECRET", "test_secret"):
                      # We don't need to patch OPENAI_API_KEY anymore if we aren't using it.
                      pass
 
@@ -207,7 +207,7 @@ class TestHandoffPipeline(unittest.IsolatedAsyncioTestCase):
         self.assertIn("turns", params)
         self.assertIn("llmGatewayPhenomena", params)
         self.assertIn("llmGatewayAnalysis", params)
-        self.assertIn("llmAnalysis", params)
+        self.assertIn("pettyLlmAnalysis", params)
         self.assertIn("sessionDate", params)
         
         # Verify content of turns

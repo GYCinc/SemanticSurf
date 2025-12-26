@@ -16,10 +16,14 @@ const token = process.env.SANITY_API_TOKEN || process.env.SANITY_API_KEY;
 
 if (!projectId || !token) {
   console.error("❌ Sanity Config Error: Missing SANITY_PROJECT_ID or SANITY_API_KEY in .env");
-  // Return a mock client or null to prevent crash on startup
+  // Return a mock client to prevent crash on startup
   module.exports = { 
     sanityClient: {
-      create: async () => { throw new Error("Sanity not configured. Check .env"); }
+      create: async () => { throw new Error("Sanity not configured. Check .env"); },
+      fetch: async () => { 
+        console.warn("⚠️ Sanity fetch called but Sanity is not configured."); 
+        return []; 
+      }
     }
   };
 } else {

@@ -70,11 +70,10 @@ from assemblyai.streaming.v3 import (
 )
 
 # --- CONFIG & ANALYZERS (Lazy Loaded) ---
-from .analyzers.llm_gateway import run_lm_gateway_query
-from .ingest_audio import (
-    calculate_file_hash,
-    perform_batch_diarization,
-    process_and_upload
+from analyzers.llm_gateway import run_llm_gateway_query
+from upload_audio_aai import (
+    process_and_upload,
+    get_existing_students
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -176,8 +175,8 @@ async def get_existing_students() -> list[str]:
     return sorted(list(students))
 
 # --- WEBSOCKET HANDLER ---
-from .analyzers.llm_gateway import push_to_semantic_server
-from .analyzers.schemas import Turn
+from analyzers.llm_gateway import push_to_semantic_server
+from analyzers.schemas import Turn
 
 # Global list of connected clients (websockets)
 connected_clients = set()

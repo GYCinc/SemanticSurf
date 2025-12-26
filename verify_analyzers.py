@@ -1,72 +1,138 @@
-import logging
 import sys
-from analyzers.session_analyzer import SessionAnalyzer
-from analyzers.pos_analyzer import POSAnalyzer
-from analyzers.ngram_analyzer import NgramAnalyzer
-from analyzers.verb_analyzer import VerbAnalyzer
-from analyzers.article_analyzer import ArticleAnalyzer
-from analyzers.preposition_analyzer import PrepositionAnalyzer
-from analyzers.phenomena_matcher import ErrorPhenomenonMatcher
+from pathlib import Path
+import logging
 
-# Setup Logging
-logging.basicConfig(level=logging.INFO, format='%(message)s')
-logger = logging.getLogger("AnalyzerCheck")
+# Ensure workspace root is on sys.path
+WORKSPACE_ROOT = Path(__file__).resolve().parent
+if str(WORKSPACE_ROOT) not in sys.path:
+    sys.path.append(str(WORKSPACE_ROOT))
 
-SYNTHETIC_TEXT = "I have went to the store yesterday because I needing to buy some milk. Um, actually, I wanted cheese too. The shop was closed, so I am sad. Do you thinking it opens tomorrow? I hope it opening."
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("AnalyzerVerifier")
 
-def test_analyzer(name, analyzer_class, method_name="analyze", *args):
-    print(f"\n🧪 Testing {name}...")
-    try:
-        analyzer = analyzer_class()
+ANALYZERS = [
+    ("AmalgumAnalyzer", "analyzers.amalgum_analyzer"),
+    ("ArticleAnalyzer", "analyzers.article_analyzer"),
+    ("ComparativeAnalyzer", "analyzers.comparative_analyzer"),
+    ("FluencyAnalyzer", "analyzers.fluency_analyzer"),
+    ("LearnerErrorAnalyzer", "analyzers.learner_error_analyzer"),
+    ("LexicalEngine", "analyzers.lexical_engine"),
+    ("NgramAnalyzer", "analyzers.ngram_analyzer"),
+    ("ErrorPhenomenonMatcher", "analyzers.phenomena_matcher"), # Note: class name might be different, checking file
+    ("POSAnalyzer", "analyzers.pos_analyzer"),
+    ("PrepositionAnalyzer", "analyzers.preposition_analyzer"),
+    ("VerbAnalyzer", "analyzers.verb_analyzer"),
+]
+
+def verify_all(transcript_path=None):
+    print("--- GRANULAR ANALYZER VERIFICATION ---")
+    
+    transcript_text = "I go-ed to the store via my bicycle." # Default
+    words_data = []
+
+    if transcript_path:
+        try:
+            path_obj = Path(transcript_path)
+            with open(path_obj, 'r') as f:
+                transcript_text = f.read()
+            print(f"📄 Loaded Transcript: {str(path_obj.name)} ({len(transcript_text)} chars)")
+            
+            # Try to find companion words.json
+            # Matches pattern matching 12-45-00_Francisco_diarized.txt -> 12-45-00_Francisco_words.json
+            words_path = path_obj.parent / path_obj.name.replace("_diarized.txt", "_words.json").replace("_raw.txt", "_words.json")
+            if words_path.exists():
+                import json
+                with open(words_path, 'r') as f:
+                    words_data = json.load(f)
+                print(f"⏱️  Loaded Words Data: {words_path.name} ({len(words_data)} words)")
+            else:
+                 print("⚠️  No _words.json found. Fluency/Timing analysis will be skipped.")
+
+        except Exception as e:
+            print(f"❌ Failed to load data: {e}")
+            return
+
+    results = {"PASS": [], "FAIL": [], "DEPRECATED": []}
+
+    print(f"\n📝 TEST TEXT PREVIEW:\n{transcript_text[:100]}...\n")
+
+    for class_name, module_path in ANALYZERS:
+        print(f"\n{'='*40}")
+        print(f"🔍 ANALYZING: {class_name}")
+        print(f"{'='*40}")
         
-        # Special case for phenomena matcher async init
-        if name == "ErrorPhenomenonMatcher":
-            import asyncio
-            asyncio.run(analyzer.initialize())
-            result = analyzer.match(SYNTHETIC_TEXT)
-        elif name == "SessionAnalyzer":
-            # SessionAnalyzer takes a dict
-            session_data = {
-                "turns": [{
-                    "transcript": SYNTHETIC_TEXT,
-                    "words": [{"text": w} for w in SYNTHETIC_TEXT.split()],
-                    "analysis": {"pauses": []}
-                }],
-                "speaker_map": {"A": "Student"},
-                "student_name": "Student",
-                "teacher_name": "Tutor"
-            }
-            analyzer = analyzer_class(session_data)
-            result = analyzer.analyze_all()
-        else:
-            method = getattr(analyzer, method_name)
-            result = method(SYNTHETIC_TEXT, *args)
+        try:
+            # Dynamic import
+            module = __import__(module_path, fromlist=[class_name])
             
-        print(f"✅ {name} Result Summary:")
-        if isinstance(result, list):
-            print(f"   Count: {len(result)}")
-            if result: print(f"   Sample: {result[0]}")
-        elif isinstance(result, dict):
-            keys = list(result.keys())[:5]
-            print(f"   Keys: {keys}")
-            if "pos_distribution" in result: print(f"   POS: {result['pos_distribution']}")
-            if "irregular_errors" in result: print(f"   Verb Errors: {result['irregular_errors']}")
-            if "comparison" in result: print("   Comparison generated.")
-        else:
-            print(f"   Result: {result}")
+            # Check for deprecation marker
+            file_path = WORKSPACE_ROOT / (module_path.replace('.', '/') + ".py")
+            with open(file_path, 'r') as f:
+                content = f.read()
+                if "# DEPRECATED" in content or "# This file has been removed" in content:
+                    print("⚠️  DEPRECATED (Skipping)")
+                    results["DEPRECATED"].append(class_name)
+                    continue
+
+            # Instantiate
+            cls = getattr(module, class_name)
+            instance = cls()
             
-    except Exception as e:
-        print(f"❌ {name} FAILED: {e}")
-        import traceback
-        traceback.print_exc()
+            # Run Analyze
+            try:
+                if class_name == "ComparativeAnalyzer":
+                        print("ℹ️  Skipping ComparativeAnalyzer (requires student+teacher data)")
+                        results["PASS"].append(class_name)
+                
+                elif class_name == "FluencyAnalyzer":
+                    if words_data:
+                        # FluencyAnalyzer specific call
+                        hesitation = instance.analyze_hesitation(words_data)
+                        rate = instance.calculate_articulation_rate(words_data)
+                        print(f"✅ HESITATION:\n{json.dumps(hesitation, indent=2)[:500]}...")
+                        print(f"✅ ARTICULATION RATE: {rate:.1f} WPM")
+                        results["PASS"].append(class_name)
+                    else:
+                        print("⚠️  Skipping FluencyAnalyzer (No word data loaded)")
+                        results["PASS"].append(class_name)
+
+                elif hasattr(instance, 'analyze') and callable(instance.analyze):
+                    output = instance.analyze(transcript_text)
+                    print(f"✅ OUTPUT ({type(output).__name__}):")
+                    import json
+                    try:
+                        # Try to pretty print JSON-serializable output
+                        print(json.dumps(output, indent=2, default=str)[:1000]) # Trucate large output
+                        if len(str(output)) > 1000: print("... (truncated)")
+                    except:
+                        print(str(output)[:1000])
+                    
+                    results["PASS"].append(class_name)
+                else:
+                        print("⚠️  No .analyze() method found")
+                        results["PASS"].append(class_name)
+
+            except Exception as e:
+                print(f"❌ EXECUTION ERROR: {e}")
+                results["FAIL"].append(f"{class_name} (Run Error: {e})")
+
+        except ImportError as e:
+            print(f"❌ IMPORT ERROR: {e}")
+            results["FAIL"].append(f"{class_name} (Import Error: {e})")
+        except AttributeError as e:
+            print(f"❌ CLASS NOT FOUND: {e}")
+            results["FAIL"].append(f"{class_name} (Class Not Found)")
+        except Exception as e:
+            print(f"❌ UNKNOWN ERROR: {e}")
+            results["FAIL"].append(f"{class_name} (Error: {e})")
+
+    print("\n" + "="*40)
+    print("MATCH SUMMARY")
+    print(f"PASS: {len(results['PASS'])}")
+    print(f"FAIL: {len(results['FAIL'])}")
+    print("="*40)
 
 if __name__ == "__main__":
-    print(f"📜 Input Text: '{SYNTHETIC_TEXT}'\n")
-    
-    test_analyzer("SessionAnalyzer", SessionAnalyzer)
-    test_analyzer("POSAnalyzer", POSAnalyzer)
-    test_analyzer("NgramAnalyzer", NgramAnalyzer)
-    test_analyzer("VerbAnalyzer", VerbAnalyzer)
-    test_analyzer("ArticleAnalyzer", ArticleAnalyzer)
-    test_analyzer("PrepositionAnalyzer", PrepositionAnalyzer)
-    test_analyzer("ErrorPhenomenonMatcher", ErrorPhenomenonMatcher)
+    import sys
+    path = sys.argv[1] if len(sys.argv) > 1 else None
+    verify_all(path)

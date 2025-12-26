@@ -4,7 +4,7 @@ import sys
 import os
 import logging
 sys.path.append(os.getcwd())
-from AssemblyAIv2.ingest_audio import process_and_upload
+from AssemblyAIv2.upload_audio_aai import process_and_upload
 
 # Configure logging to see output
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +21,7 @@ async def run_real_test():
     try:
         # We Mock send_to_gitenglish to avoid needing the Hub API secret if it's missing
         # But we let AssemblyAI run to get real data
-        import AssemblyAIv2.ingest_audio as ia
+        import AssemblyAIv2.upload_audio_aai as ia
         original_send = ia.send_to_gitenglish
         
         async def mock_send(action, student_id_or_name, params=None):

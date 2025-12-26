@@ -95,23 +95,36 @@ class LexicalEngine:
                          return stem_y
         return w
 
-    def is_in_whitelist(self, word: str) -> bool:
+    def resolve_token(self, word: str) -> Optional[str]:
         """
-        Calculates membership with Fuzzy Fallback for cognitive effort.
+        Resolves a word to its canonical dictionary form.
+        Priority:
+        1. Exact Match (e.g. "talking" in list) -> Returns "talking"
+        2. Lemma Match (e.g. "talks" -> "talk" in list) -> Returns "talk" (Stemming behavior)
+        3. Fuzzy Match (e.g. "talkin" -> "talking") -> Returns "talking"
         """
         w = word.lower()
+        # 1. Exact Match
         if w in self.ngsl_vocab or w in self.coca_vocab:
-            return True
+            return w
         
+        # 2. Check if lemma is in list (Implicitly valid)
+        # Note: If user wants "talks" distinct from "talk", we only get "talks" if "talks" is in the dict.
+        # Most frequency lists contain inflected forms. IF NOT, this fallback collapses to lemma.
+        # This is acceptable standard behavior for unlisted inflections.
         lemma = self.lemmatize(w)
         if lemma in self.ngsl_vocab or lemma in self.coca_vocab:
-            return True
+            return lemma
             
+        # 3. Fuzzy Match (Cognitive Effort)
         fuzzy = self.find_fuzzy_match(w)
         if fuzzy:
-            return True
+            return fuzzy
             
-        return False
+        return None
+
+    def is_in_whitelist(self, word: str) -> bool:
+        return self.resolve_token(word) is not None
         
     def is_academic(self, word: str) -> bool:
         return word.lower() in self.ngsl_vocab
@@ -135,7 +148,6 @@ class LexicalEngine:
             nltk.download('averaged_perceptron_tagger_eng', quiet=True)
             
         # Run POS tagging
-        # Note: We pass the stripped tokens to get cleaner tags
         try:
             pos_tags = nltk.pos_tag(tokens)
         except Exception: # Fallback if download failed
@@ -149,7 +161,10 @@ class LexicalEngine:
             text_clean = text_raw.strip(".,?!\"'").lower()
             if not text_clean: continue
             
-            is_whitelisted = self.is_in_whitelist(text_clean)
+            # Resolve to canonical form
+            resolved = self.resolve_token(text_clean)
+            is_whitelisted = resolved is not None
+            
             if not is_whitelisted:
                 unknown_count += 1
             
@@ -161,9 +176,10 @@ class LexicalEngine:
                 "start": w_obj.get('start'),
                 "end": w_obj.get('end'),
                 "confidence": w_obj.get('confidence'),
-                "is_academic": self.is_academic(text_clean),
+                "is_academic": self.is_academic(resolved) if resolved else False,
                 "is_whitelisted": is_whitelisted,
                 "lemma": self.lemmatize(text_clean),
+                "resolved_word": resolved,  # Key addition for exact form tracking
                 "pos": pos_tag
             })
             

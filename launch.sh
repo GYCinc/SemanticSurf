@@ -77,15 +77,21 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-# --- 3. LAUNCH PYTHON BACKEND ---
-echo "Starting Python Backend..."
-# Use python3 and -u for unbuffered output (critical for real-time logs)
-python3 -u main.py &
-PYTHON_PID=$!
+# --- 3. LAUNCH BACKENDS ---
 
-# Wait for server to start
-echo "Waiting for server to initialize..."
-sleep 3 # Give Python time to start WebSocket server
+echo "Starting Semantic Server (MiniGuru)..."
+# The Semantic Server handles post-session LLM analysis on port 8080
+python3 -u semantic_server.py &
+SEMANTIC_PID=$!
+
+echo "Starting Real-time Engine (The Ears)..."
+# main.py handles live websocket and audio on port 8765
+python3 -u main.py &
+MAIN_PID=$!
+
+# Wait for servers to start
+echo "Waiting for servers to initialize..."
+sleep 4 # Give processes time to bind ports
 
 # --- 4. LAUNCH ELECTRON (Frontend) ---
 echo "Starting Electron Frontend..."
@@ -94,12 +100,13 @@ npm start &
 ELECTRON_PID=$!
 
 # --- 5. CLEANUP ON EXIT ---
-# Ensure both processes are killed when this script exits
-trap "kill $PYTHON_PID $ELECTRON_PID 2>/dev/null; exit" SIGINT SIGTERM EXIT
+# Ensure all processes are killed when this script exits
+trap "kill $SEMANTIC_PID $MAIN_PID $ELECTRON_PID 2>/dev/null; exit" SIGINT SIGTERM EXIT
 
 echo "--- APPLICATION RUNNING. Press Ctrl+C to stop. ---"
-echo "Python PID: $PYTHON_PID"
+echo "Semantic Server PID: $SEMANTIC_PID (Port 8080)"
+echo "Real-time Engine PID: $MAIN_PID (Port 8765)"
 echo "Electron PID: $ELECTRON_PID"
 
 # Keep script running to maintain the trap
-wait $PYTHON_PID $ELECTRON_PID
+wait $SEMANTIC_PID $MAIN_PID $ELECTRON_PID

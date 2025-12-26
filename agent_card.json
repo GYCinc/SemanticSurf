@@ -1,0 +1,44 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Semantic Server Agent",
+  "description": "High-fidelity ESL linguistic analysis engine. Provides deep reasoning, lexical statistics, and context-aware chunking for English learning feedback.",
+  "supportedInterfaces": [
+    {
+      "url": "http://localhost:8080/analyze",
+      "protocolBinding": "HTTP+JSON"
+    },
+    {
+      "url": "mcp:get_analysis_handoff",
+      "protocolBinding": "MCP"
+    }
+  ],
+  "provider": {
+    "organization": "Semantic Surfer",
+    "url": "https://github.com/gitenglishhub"
+  },
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "skills": [
+    {
+      "id": "analyze-transcript",
+      "name": "Analyze Transcript",
+      "description": "Performs deep linguistic analysis on a transcript. Returns metrics, lexical stats, and LLM-synthesized feedback.",
+      "tags": ["linguistics", "esl", "analysis", "feedback"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "data-handoff",
+      "name": "Get Analysis Handoff",
+      "description": "Retrieves the complete, raw analysis state (The Soup) for downstream processing.",
+      "tags": ["data", "export", "raw"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    }
+  ],
+  "supportsExtendedAgentCard": false
+}

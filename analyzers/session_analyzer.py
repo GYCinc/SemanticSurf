@@ -22,6 +22,8 @@ from typing import cast, Any, Callable, final
 from collections.abc import Mapping, Iterable
 import sys
 import logging
+from AssemblyAIv2.analyzers.lexical_engine import LexicalEngine
+from AssemblyAIv2.analyzers.learner_error_analyzer import LearnerErrorAnalyzer
 
 try:
     from textblob import TextBlob # type: ignore
@@ -34,18 +36,9 @@ except ImportError:
 # NLTK for advanced NLP (Penn Treebank POS, WordNet, N-grams)
 try:
     import nltk # type: ignore
-    from nltk import word_tokenize as _word_tokenize, pos_tag as _pos_tag, ngrams as _ngrams # type: ignore
-    from nltk.stem import WordNetLemmatizer as _WordNetLemmatizer # type: ignore
-    from nltk.corpus import wordnet # type: ignore
-    
-    word_tokenize: Callable[[str], list[str]] | None = cast(Any, _word_tokenize)
-    pos_tag: Callable[[list[str]], list[tuple[str, str]]] | None = cast(Any, _pos_tag)
-    ngrams: Callable[[list[str], int], Iterable[tuple[str, ...]]] | None = cast(Any, _ngrams)
-    
-    class _LemmatizerProtocol:
-        def lemmatize(self, _word: str, _pos: str = "n") -> str: ...
-    
-    WordNetLemmatizer: Callable[[], _LemmatizerProtocol] | None = cast(Any, _WordNetLemmatizer)
+    from nltk.tokenize import word_tokenize, sent_tokenize # type: ignore
+    from nltk.util import ngrams # type: ignore
+    from nltk import pos_tag # type: ignore
     
     nltk_available = True
     # Ensure required data is downloaded
@@ -63,11 +56,10 @@ try:
 except ImportError:
     nltk_available = False
     print("WARNING: nltk not found. Run 'pip install nltk' for POS tagging and n-grams.")
-    wordnet = None  # type: ignore
-    word_tokenize = None # type: ignore
-    pos_tag = None # type: ignore
-    ngrams = None # type: ignore
-    WordNetLemmatizer = None # type: ignore
+    word_tokenize = None
+    sent_tokenize = None
+    ngrams = None
+    pos_tag = None
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -156,6 +148,13 @@ class SessionAnalyzer:
             self.teacher_turns = cast(list[dict[str, Any]], self._get_turns_for_speaker(self.teacher_label))
             self.teacher_full_text = " ".join([cast(str, t.get('transcript', t.get('text', ''))) for t in self.teacher_turns])
 
+        # Initialize LexicalEngine for high-fidelity vocab analysis
+        self.lexical_engine = LexicalEngine()
+
+        # Capture Raw/Punctuated for Corpus Logic
+        self.raw_text = str(session_data.get('raw_transcript', ''))
+        self.punctuated_text = str(session_data.get('punctuated_transcript', ''))
+
         # --- Enriched Metadata (Auto-Calculate if missing) ---
         self._enrich_metadata()
 
@@ -219,6 +218,15 @@ class SessionAnalyzer:
                         analysis['speaking_rate_wpm'] = 0.0
 
 
+    def _analyze_learner_errors(self, text: str) -> list[dict[str, Any]]:
+        """Run the robust LearnerErrorAnalyzer"""
+        try:
+            analyzer = LearnerErrorAnalyzer()
+            return analyzer.analyze(text)
+        except Exception as e:
+            logger.error(f"LearnerErrorAnalyzer failed: {e}")
+            return []
+
     def analyze_all(self) -> dict[str, Any]:
         """Run all analyses for BOTH student and teacher with comparisons"""
 
@@ -230,11 +238,45 @@ class SessionAnalyzer:
             'advanced_local_analysis': self.run_textblob_analysis(),
             'fillers': self.analyze_fillers(self.student_turns_list),
             'hesitation_patterns': self.analyze_hesitation_patterns(self.student_turns_list),
-            # SLA Framework additions
+        # SLA Framework additions
             'ngram_analysis': self.analyze_ngrams(self.student_full_text),
             'pos_analysis': self.analyze_pos_tags(self.student_full_text),
             'caf_metrics': self.analyze_caf(self.student_turns_list),
+            'learner_errors': self._analyze_learner_errors(self.student_full_text),  # [NEW] Robust Error Analysis
         }
+
+        # --- Unified Phenomena Injection (The "Holy Mirror") ---
+        # We augment the learner_errors with the dedicated Unified Phenomena Matcher
+        try:
+            from AssemblyAIv2.analyzers.phenomena_matcher import ErrorPhenomenonMatcher
+            # Initialize (async init technically required for remote, but we use local mostly)
+            # For this synchronous path, we rely on the matcher's __init__ or run a quick loop if needed.
+            # However, PhenomenaMatcher.initialize is async.
+            # We will instantiate and try to use what's available or run it synchronously if possible.
+            # Looking at PhenomenaMatcher, it has an async initialize.
+            # We'll use a helper to run it or rely on a synchronous fallback if strictly local?
+            # Actually, let's just create it. The local patterns load in initialize().
+            
+            # Helper to run async init in sync context if needed, or just standard loop
+            import asyncio
+            matcher = ErrorPhenomenonMatcher()
+            # We strictly need the local patterns loaded.
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(matcher.initialize())
+            loop.close()
+            
+            unified_matches = matcher.match(self.student_full_text)
+            
+            # Merge into learner_errors
+            # learner_errors is a list[dict]. We simply extend it.
+            if isinstance(student_metrics['learner_errors'], list):
+                student_metrics['learner_errors'].extend(unified_matches)
+                logger.info(f"SessionAnalyzer: Injected {len(unified_matches)} unified phenomena matches.")
+            else:
+                 logger.warning("SessionAnalyzer: learner_errors is not a list, cannot inject unified matches.")
+            
+        except Exception as e:
+            logger.warning(f"Unified Phenomena Matcher failed to run: {e}")
 
         teacher_metrics = {
             'speaking_rate': self.analyze_speaking_rate(self.teacher_turns),
@@ -244,18 +286,93 @@ class SessionAnalyzer:
         }
 
         # --- COMPARATIVE ANALYSIS (The good stuff) ---
-        comparison = self._build_comparison(cast(dict[str, object], student_metrics), cast(dict[str, object], teacher_metrics))
+        # 1. Basic Stats Comparison
+        basic_comparison = self._build_comparison(cast(dict[str, object], student_metrics), cast(dict[str, object], teacher_metrics))
+        
+        # 2. Deep Linguistic Comparison (ComparativeAnalyzer)
+        deep_comparison = {}
+        try:
+            from AssemblyAIv2.analyzers.comparative_analyzer import ComparativeAnalyzer
+            comp_analyzer = ComparativeAnalyzer()
+            # We need student and teacher text.
+            # Warning: self.teacher_full_text might be empty if no teacher turns found
+            deep_comparison = comp_analyzer.analyze(self.teacher_full_text, self.student_full_text)
+        except Exception as e:
+            logger.warning(f"ComparativeAnalyzer failed: {e}")
+
+        # Merge them (Deep overrides Basic where keys match, or keeps both)
+        # We'll put basic into a key called 'stats' and deep into 'linguistics'
+        final_comparison = {
+            'stats': basic_comparison,
+            'linguistics': deep_comparison.get('comparison', {}), 
+            'tutor_linguistics': deep_comparison.get('tutor', {}),
+            'student_linguistics': deep_comparison.get('student', {})
+        }
 
         return {
             'session_info': self._get_session_info(),
             'student_metrics': student_metrics,
             'teacher_metrics': teacher_metrics,
-            'comparison': comparison,
-            'teacher_feedback': self._generate_teacher_feedback(comparison),
+            'comparison': final_comparison,
+            'teacher_feedback': self._generate_teacher_feedback(basic_comparison),
             'marked_turns': self._get_marked_turns_summary(),
-            'action_items': self._get_action_items()
+            'action_items': self._get_action_items(),
+            'corpus_review': self._generate_corpus_review() # [NEW] Human-in-the-Loop Corpus Injection
             # 'lm_analysis' added by lm_gateway.py
         }
+
+    def _generate_corpus_review(self) -> dict[str, Any]:
+        """
+        Generates the 'Corpus Injection' review package.
+        See: ASSEMBLYAI BIBLE - Dual-Pass Protocol
+        Use Diarized/Punctuated text as the 'Source of Truth' for student credits.
+        """
+        import uuid
+        import os
+        
+        # 1. Extract Student Lemmas (using LexicalEngine)
+        # Result is a Dict with keys: 'words', 'raw_text', 'unknown_ratio', etc.
+        lex_result = self.lexical_engine.analyze_production([w for t in self.student_turns_list for w in t.get('words', [])])
+        
+        # We need a clean LIST of proposed lemmas/words, not the whole dict.
+        # Filter for:
+        # - Whitelisted (Real words)
+        # - Not 'unknown'
+        # - Unique entries
+        # FIXED: Use 'resolved_word' (Exact dictionary match) instead of 'lemma' (Stem)
+        # This ensures 'talking' and 'talk' are distinct if both are in the dictionary.
+        unique_lemmas = sorted(list(set(
+            w['resolved_word'] for w in lex_result.get('words', []) 
+            if w.get('is_whitelisted') and w.get('resolved_word')
+        )))
+
+        review_packet = {
+            "session_id": self.session.get('session_id', str(uuid.uuid4())),
+            "student_name": self.student_name,
+            "timestamp": "Now",
+            "injection_status": "PENDING_REVIEW",
+            "validation_source": "DIARIZED_TRANSCRIPT",
+            "validation_method": "Exact Dictionary Match + Fuzzy (Cognitive Effort Credit)",
+            "raw_check": "Available in .session_captures",
+            "proposed_corpus_additions": unique_lemmas, # List of resolved words
+             # Snippets for quick context
+            "transcript_snippet": self.student_full_text[:500] + "..." if len(self.student_full_text) > 500 else self.student_full_text
+        }
+        
+        # 2. Write to Admin Inbox
+        inbox_dir = Path(self.session.get('workspace_root', '.')) / "AssemblyAIv2/admin_inbox"
+        inbox_dir.mkdir(parents=True, exist_ok=True)
+        
+        filename = f"corpus_review_{self.student_name}_{uuid.uuid4().hex[:8]}.json"
+        
+        try:
+            with open(inbox_dir / filename, 'w') as f:
+                json.dump(review_packet, f, indent=2)
+            logger.info(f"📨 Corpus Review Packet sent to: {inbox_dir / filename}")
+        except Exception as e:
+            logger.error(f"Failed to write Corpus Review: {e}")
+            
+        return review_packet
 
     def _get_session_info(self) -> dict[str, object]:
         """Basic session information"""
@@ -469,18 +586,22 @@ class SessionAnalyzer:
 
     def _get_wordnet_pos(self, treebank_tag: str) -> str:
         """Convert Penn Treebank POS tag to WordNet POS tag for lemmatization"""
-        if not nltk_available or wordnet is None:
+        # This method is no longer strictly needed for lemmatization with LexicalEngine,
+        # but kept for potential future NLTK WordNet usage if desired.
+        if not nltk_available:
             return 'n'
-        if treebank_tag.startswith('J'):
-            return wordnet.ADJ
-        elif treebank_tag.startswith('V'):
-            return wordnet.VERB
-        elif treebank_tag.startswith('N'):
-            return wordnet.NOUN
-        elif treebank_tag.startswith('R'):
-            return wordnet.ADV
-        else:
-            return wordnet.NOUN  # Default to noun
+        # Placeholder for wordnet if it were still imported
+        # from nltk.corpus import wordnet
+        # if treebank_tag.startswith('J'):
+        #     return wordnet.ADJ
+        # elif treebank_tag.startswith('V'):
+        #     return wordnet.VERB
+        # elif treebank_tag.startswith('N'):
+        #     return wordnet.NOUN
+        # elif treebank_tag.startswith('R'):
+        #     return wordnet.ADV
+        # else:
+        return 'n'  # Default to noun
 
     def analyze_ngrams(self, text: str, n_range: tuple[int, int] = (2, 4)) -> dict[str, object]:
         """
@@ -532,15 +653,12 @@ class SessionAnalyzer:
         Penn Treebank POS tagging with WordNet lemmatization.
         Returns POS distribution and vocabulary by category.
         """
-        if not nltk_available or word_tokenize is None or pos_tag is None or WordNetLemmatizer is None or not text:
+        if not nltk_available or word_tokenize is None or pos_tag is None or not text:
             return {'error': 'NLTK not available or no text'}
-        
+            
         try:
             tokens = word_tokenize(text) if word_tokenize is not None else []
             tagged = pos_tag(tokens) if pos_tag is not None else []
-            
-            # Initialize lemmatizer
-            lemmatizer = WordNetLemmatizer()
             
             # Categorize by Penn Treebank tags
             pos_categories: dict[str, list[str]] = {
@@ -563,12 +681,8 @@ class SessionAnalyzer:
                     
                 pos_counts[tag] += 1
                 
-                # Lemmatize with correct POS
-                wn_pos = self._get_wordnet_pos(str(tag))
-                if not lemmatizer:
-                    lemma = word.lower()
-                else:
-                    lemma = str(lemmatizer.lemmatize(word.lower(), wn_pos))
+                # Lemmatize with High-Fidelity LexicalEngine (Deterministic Suffix Stripping)
+                lemma = self.lexical_engine.lemmatize(word.lower())
                 lemmas.append(lemma)
                 
                 # Categorize
@@ -884,31 +998,8 @@ class SessionAnalyzer:
             for turn in teacher_turns:
                 teacher_words.extend([str(w.get('text', '')).lower() for w in cast(list[dict[str, object]], turn.get('words', []))])
 
-        student_lemmas: set[str] = set()
-        teacher_lemmas: set[str] = set()
-        
-        if textblob_available:
-            for word in student_words:
-                if word.isalpha():
-                    blob = TextBlob(word) if TextBlob else None
-                    if not blob: continue
-                    blob_words = cast(list[object], getattr(blob, 'words', []))
-                    if blob_words and len(blob_words) > 0:
-                        student_lemmas.add(str(getattr(blob_words[0], 'lemmatize', lambda: word)()))
-            for word in teacher_words:
-                if word.isalpha():
-                    blob = TextBlob(word) if TextBlob else None
-                    if not blob: continue
-                    blob_words = cast(list[object], getattr(blob, 'words', []))
-                    if blob_words and len(blob_words) > 0:
-                        teacher_lemmas.add(str(getattr(blob_words[0], 'lemmatize', lambda: word)()))
-        elif nltk_available and WordNetLemmatizer is not None:
-            wnl = WordNetLemmatizer()
-            student_lemmas = {str(wnl.lemmatize(word)) for word in student_words if word.isalpha()}
-            teacher_lemmas = {str(wnl.lemmatize(word)) for word in teacher_words if word.isalpha()}
-        else:
-            student_lemmas = set(student_words)
-            teacher_lemmas = set(teacher_words)
+        student_lemmas: set[str] = {self.lexical_engine.lemmatize(word) for word in student_words if word.isalpha()}
+        teacher_lemmas: set[str] = {self.lexical_engine.lemmatize(word) for word in teacher_words if word.isalpha()}
         
         combined_lemmas = student_lemmas.union(teacher_lemmas)
 

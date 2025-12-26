@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld('electron', {
   getConfig: () => ipcRenderer.invoke('get-config'),
   toggleAlwaysOnTop: () => ipcRenderer.send('toggle-always-on-top'),
   saveCardToSanity: (cardData) => ipcRenderer.invoke('save-card-to-sanity', cardData), // Expose Sanity save
+  getSanityStudents: () => ipcRenderer.invoke('get-sanity-students'),
 });

@@ -8,3 +8,11 @@ python-dotenv
 textblob
 websockets
 nltk
+fastapi
+uvicorn
+pydantic
+mcp
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client

@@ -233,4 +233,4 @@ def push_to_semantic_server(
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-run_lm_gateway_query = push_to_semantic_server
+run_llm_gateway_query = push_to_semantic_server

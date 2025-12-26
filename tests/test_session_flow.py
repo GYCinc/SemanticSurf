@@ -21,16 +21,28 @@ mock_analyzers = MagicMock()
 sys.modules["AssemblyAIv2.analyzers"] = mock_analyzers
 sys.modules["AssemblyAIv2.analyzers.llm_gateway"] = mock_analyzers
 sys.modules["AssemblyAIv2.analyzers.schemas"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.session_analyzer"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.sentence_chunker"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.lexical_engine"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.pos_analyzer"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.ngram_analyzer"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.verb_analyzer"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.article_analyzer"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.amalgum_analyzer"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.comparative_analyzer"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.phenomena_matcher"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.preposition_analyzer"] = mock_analyzers
+sys.modules["AssemblyAIv2.analyzers.learner_error_analyzer"] = mock_analyzers
 
 # Import functions to test
 from AssemblyAIv2.main import (
     get_existing_students,
     current_session
 )
-from AssemblyAIv2.ingest_audio import calculate_file_hash
+from AssemblyAIv2.upload_audio_aai import calculate_file_hash
 import AssemblyAIv2.main as main
 
-class TestPreSession(unittest.TestCase):
+class TestPreSession(unittest.IsolatedAsyncioTestCase):
 
     # Removed: validate_audio_device, normalize_student_name logic moved or deleted.
 
@@ -45,21 +57,11 @@ class TestPreSession(unittest.TestCase):
              result = calculate_file_hash("nonexistent.txt")
              self.assertIsNone(result)
 
-    @patch('main.os.path.exists', return_value=True)
-    @patch('main.Path.glob')
-    def test_get_existing_students_local(self, mock_glob, mock_exists):
-        # Setup mock files
-        mock_file1 = MagicMock()
-        mock_file1.read_text.return_value = '{"student_name": "Alice"}'
-
-        mock_file2 = MagicMock()
-        mock_file2.read_text.return_value = '{"student_name": "Bob"}'
-
-        mock_glob.return_value = [mock_file1, mock_file2]
-
-        students = get_existing_students()
-
-        self.assertEqual(students, ["Alice", "Bob"])
+    @patch('AssemblyAIv2.main.Path.exists', return_value=True)
+    @patch('builtins.open', new_callable=mock_open, read_data='["Alice", "Bob"]')
+    async def test_get_existing_students_local(self, mock_open, mock_exists):
+        students = await get_existing_students()
+        self.assertEqual(students, ["Alice", "Bob", "System Test Student"])
 
 class TestIntraSession(unittest.TestCase):
     def setUp(self):

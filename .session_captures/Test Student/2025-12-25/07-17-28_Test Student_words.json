@@ -1,0 +1,29 @@
+[
+  {
+    "speaker": "A",
+    "transcript": "Hello world",
+    "start": 0,
+    "end": 1000,
+    "confidence": 0.9,
+    "words": [
+      {
+        "text": "Hello",
+        "start": 0,
+        "end": 500,
+        "confidence": 0.9,
+        "speaker": "A"
+      },
+      {
+        "text": "world",
+        "start": 500,
+        "end": 1000,
+        "confidence": 0.9,
+        "speaker": "A"
+      }
+    ],
+    "analysis": {
+      "pauses": [],
+      "speaking_rate_wpm": 120.0
+    }
+  }
+]

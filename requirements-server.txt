@@ -1,11 +1,14 @@
+# Requires Python 3.13.11
+# Requires ffmpeg installed on system
 assemblyai
 httpx
 numpy
-openrouter>=0.1.1
 python-dotenv
 textblob
 websockets
 # Server Dependencies
 fastapi
 uvicorn
-openrouter-client
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2

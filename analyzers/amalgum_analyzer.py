@@ -90,3 +90,7 @@ class AmalgumAnalyzer:
             return "Conversational"
         else:
             return "Neutral"
+
+    def analyze(self, text: str) -> Dict[str, float]:
+        """Standard interface alias."""
+        return self.analyze_register(text)
