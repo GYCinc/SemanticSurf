@@ -68,34 +68,9 @@
 
     </style>
 </head>
-<body>
+<body class="bg-gradient-to-br from-[#450a0a] via-[#991b1b] to-[#450a0a]">
 
-    <div class="drag app-header">
-        <div class="flex items-center">
-            <div id="connection-status" class="status-dot"></div>
-            <span class="text-[10px] font-black tracking-widest opacity-50">SEMANTIC SURFER</span>
-        </div>
-        
-        <div class="no-drag flex items-center gap-6">
-            <select id="student-selector" class="bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-[10px] font-black text-white/90 uppercase outline-none cursor-pointer">
-                <option value="" disabled selected>Loading Students...</option>
-            </select>
-
-            <div class="wpm-box">
-                <span id="wpm-display" class="font-black text-lg">0</span>
-                <span class="text-[7px] font-black opacity-30 uppercase">WPM</span>
-            </div>
-
-            <div class="flex flex-col items-end">
-                <span class="text-[7px] font-black opacity-30 uppercase">Timer</span>
-                <div id="session-timer" class="text-xs font-mono font-bold text-white/60">00:00:00</div>
-            </div>
-
-            <button id="start-btn" class="px-6 py-2 rounded-full bg-red-600/40 hover:bg-red-600/60 text-[10px] font-black uppercase transition-all">Start</button>
-            <button id="end-btn" class="hidden px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase transition-all">End</button>
-            <button onclick="toggleWhiteboard()" class="px-4 py-2 rounded-full bg-blue-600/20 hover:bg-blue-600/40 text-[10px] font-black uppercase transition-all border border-blue-500/30">Whiteboard</button>
-        </div>
-    </div>
+    <div id="root"></div>
 
     <!-- Whiteboard Pop-over -->
     <div id="wb-overlay">
@@ -111,127 +86,281 @@
         <div id="wb-canvas-container"></div>
     </div>
 
-    <div id="transcript-feed" class="absolute inset-0 top-20 px-12 py-10 overflow-y-auto">
-        <div id="empty-msg" class="h-full flex flex-col items-center justify-center opacity-30">
-            <div class="text-4xl font-black uppercase">Engine Ready</div>
-            <div class="text-xs tracking-[0.4em] uppercase mt-2">Select Student to Initialize Bedrock</div>
-        </div>
-    </div>
-
     <!-- Liveblocks SDK -->
     <script src="https://unpkg.com/@liveblocks/client"></script>
     <script src="ui/whiteboard.js"></script>
     <link rel="stylesheet" href="ui/whiteboard.css">
 
-    <script>
-        const electron = window.electron;
-        const selector = document.getElementById('student-selector');
-        const feed = document.getElementById('transcript-feed');
-        const emptyMsg = document.getElementById('empty-msg');
-        const status = document.getElementById('connection-status');
-        const startBtn = document.getElementById('start-btn');
-        const endBtn = document.getElementById('end-btn');
-        const timerDisplay = document.getElementById('session-timer');
-        const wpmDisplay = document.getElementById('wpm-display');
+    <!-- React & Dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/framer-motion@10.12.16/dist/framer-motion.js"></script>
 
-        let ws = null;
-        let startTime = null;
-        let loadedFromSanity = false;
+    <script type="text/babel">
+        const { useState, useEffect, useRef, Fragment } = React;
+        const { motion, AnimatePresence } = window.Motion;
 
-        async function loadSanityStudents() {
-            try {
-                console.log("Fetching students from Sanity...");
-                const students = await electron.getSanityStudents();
-                if (students && students.length > 0) {
-                    console.log("✅ Loaded students from Sanity:", students);
-                    selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
-                    students.forEach(student => {
-                        const opt = document.createElement('option');
-                        opt.value = student.name; 
-                        opt.textContent = student.name;
-                        selector.appendChild(opt);
-                    });
-                    loadedFromSanity = true;
-                } else {
-                    console.warn("⚠️ No students found in Sanity. Keeping existing list if any.");
-                }
-            } catch (e) {
-                console.error("❌ Failed to load students from Sanity:", e);
-            }
-        }
+        const App = () => {
+            const [students, setStudents] = useState([]);
+            const [selectedStudent, setSelectedStudent] = useState('');
+            const [isConnected, setIsConnected] = useState(false);
+            const [sessionState, setSessionState] = useState('idle'); // idle, running
+            const [transcripts, setTranscripts] = useState([]);
+            const [partialTranscript, setPartialTranscript] = useState('');
+            const [wpm, setWpm] = useState(0);
 
-        function connect() {
-            ws = new WebSocket('ws://localhost:8765');
-            ws.onopen = () => {
-                status.classList.add('active');
-                console.log('✅ Connected');
-                // We don't ask backend for students if we expect Sanity, 
-                // but backend sends it anyway on connect.
-                // ws.send(JSON.stringify({ message_type: 'get_students' }));
-            };
-            ws.onclose = () => {
-                status.classList.remove('active');
-                setTimeout(connect, 2000);
-            };
-            ws.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                console.log('Message:', data.message_type);
-                
-                if (data.message_type === 'student_list' && data.students) {
-                    if (!loadedFromSanity) {
-                        console.log("Using backend student list (Sanity failed or empty)");
-                        selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
-                        data.students.forEach(name => {
-                            const opt = document.createElement('option');
-                            opt.value = name; opt.textContent = name;
-                            selector.appendChild(opt);
-                        });
-                    } else {
-                        console.log("Ignoring backend student list (Sanity loaded)");
+            const ws = useRef(null);
+
+            const connect = () => {
+                ws.current = new WebSocket('ws://localhost:8765');
+                ws.current.onopen = () => setIsConnected(true);
+                ws.current.onclose = () => {
+                    setIsConnected(false);
+                    setTimeout(connect, 2000);
+                };
+                ws.current.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    switch (data.message_type) {
+                        case 'student_list':
+                            // If Sanity students are already loaded, don't overwrite them
+                            if (students.length === 0) {
+                                setStudents(data.students);
+                            }
+                            break;
+                        case 'session_start':
+                            setSessionState('running');
+                            setTranscripts([]);
+                            setPartialTranscript('');
+                            break;
+                        case 'transcript':
+                            setTranscripts(prev => [...prev, data]);
+                            setPartialTranscript('');
+                            break;
+                        case 'partial':
+                            setPartialTranscript(data.text);
+                            break;
+                        case 'wpm':
+                            setWpm(Math.round(data.wpm));
+                            break;
                     }
-                } else if (data.message_type === 'session_start') {
-                    startTime = new Date();
-                    emptyMsg.style.display = 'none';
-                    startBtn.classList.add('hidden');
-                    endBtn.classList.remove('hidden');
-                    setInterval(() => {
-                        if (!startTime) return;
-                        const d = new Date() - startTime;
-                        timerDisplay.textContent = new Date(d).toISOString().substr(11, 8);
-                    }, 1000);
-                } else if (data.message_type === 'transcript') {
-                    const div = document.createElement('div');
-                    div.className = 'turn-container';
-                    div.innerHTML = `<div class="speaker-label">${data.speaker}</div><div class="text-xl font-bold"></div>`;
-                    const content = div.querySelector('.text-xl');
-                    if (data.words) {
-                        data.words.forEach(w => {
-                            const span = document.createElement('span');
-                            span.className = 'word-token';
-                            span.textContent = w.text;
-                            span.onclick = () => {
-                                span.classList.toggle('marked');
-                                electron.saveCardToSanity({ category: 'RECAST', detectedTrigger: w.text, explanation: data.transcript });
-                            };
-                            content.appendChild(span);
-                        });
-                    } else { content.textContent = data.transcript; }
-                    feed.appendChild(div);
-                    feed.scrollTop = feed.scrollHeight;
-                } else if (data.wpm) {
-                    wpmDisplay.textContent = Math.round(data.wpm);
+                };
+            };
+
+            useEffect(() => {
+                const loadSanityStudents = async () => {
+                    try {
+                        const sanityStudents = await window.electron.getSanityStudents();
+                        if (sanityStudents && sanityStudents.length > 0) {
+                            setStudents(sanityStudents.map(s => s.name));
+                        }
+                    } catch (e) {
+                        console.error("Failed to load students from Sanity:", e);
+                    }
+                };
+
+                loadSanityStudents();
+                connect();
+                return () => ws.current && ws.current.close();
+            }, []);
+
+            const startSession = () => {
+                if (selectedStudent) {
+                    ws.current.send(JSON.stringify({ message_type: 'start_session', student_name: selectedStudent }));
                 }
             };
-        }
 
-        startBtn.onclick = () => {
-            if (!selector.value) return alert('Select Student');
-            ws.send(JSON.stringify({ message_type: 'start_session', student_name: selector.value }));
+            const endSession = () => {
+                ws.current.send(JSON.stringify({ message_type: 'end_session' }));
+                setSessionState('idle');
+            };
+
+            return (
+                <div className="flex flex-col h-screen">
+                    <Header
+                        students={students}
+                        selectedStudent={selectedStudent}
+                        onSelectStudent={setSelectedStudent}
+                        isConnected={isConnected}
+                        sessionState={sessionState}
+                        onStart={startSession}
+                        onEnd={endSession}
+                        wpm={wpm}
+                    />
+                    <TranscriptFeed transcripts={transcripts} partialTranscript={partialTranscript} sessionState={sessionState} />
+                </div>
+            );
         };
-        endBtn.onclick = () => ws.send(JSON.stringify({ message_type: 'end_session' }));
 
-        loadSanityStudents();
-        connect();
+        const Header = ({ students, selectedStudent, onSelectStudent, isConnected, sessionState, onStart, onEnd, wpm }) => {
+             const [timer, setTimer] = useState(0);
+
+            useEffect(() => {
+                let interval;
+                if (sessionState === 'running') {
+                    interval = setInterval(() => setTimer(t => t + 1), 1000);
+                } else {
+                    setTimer(0);
+                }
+                return () => clearInterval(interval);
+            }, [sessionState]);
+
+            const formatTime = (seconds) => new Date(seconds * 1000).toISOString().substr(11, 8);
+
+            return (
+                <header className="drag app-header flex items-center justify-between text-white z-30">
+                    <div className="flex items-center gap-3">
+                        <div className={`status-dot ${isConnected ? 'active' : ''}`}></div>
+                        <span className="text-[10px] font-black tracking-widest opacity-50">SEMANTIC SURFER</span>
+                    </div>
+                    <div className="no-drag flex items-center gap-6">
+                        <CustomSelect
+                            options={students}
+                            selected={selectedStudent}
+                            onSelect={onSelectStudent}
+                            placeholder="Select Student"
+                            disabled={sessionState === 'running'}
+                        />
+                        <div className="wpm-box">
+                            <span className="font-black text-lg">{wpm}</span>
+                            <span className="text-[7px] font-black opacity-30 uppercase">WPM</span>
+                        </div>
+                         <div className="flex flex-col items-end w-20">
+                            <span className="text-[7px] font-black opacity-30 uppercase">Timer</span>
+                            <div className="text-xs font-mono font-bold text-white/60">{formatTime(timer)}</div>
+                        </div>
+                        {sessionState === 'idle' ? (
+                            <button onClick={onStart} disabled={!selectedStudent} className="px-6 py-2 rounded-full bg-red-600/40 hover:bg-red-600/60 text-[10px] font-black uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed">Start</button>
+                        ) : (
+                            <button onClick={onEnd} className="px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase transition-all">End Session</button>
+                        )}
+                        <button onClick={() => window.toggleWhiteboard()} className="px-4 py-2 rounded-full bg-blue-600/20 hover:bg-blue-600/40 text-[10px] font-black uppercase transition-all border border-blue-500/30">Whiteboard</button>
+                    </div>
+                </header>
+            );
+        };
+
+        const CustomSelect = ({ options, selected, onSelect, placeholder, disabled }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const ref = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (ref.current && !ref.current.contains(event.target)) {
+                        setIsOpen(false);
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, [ref]);
+
+            return (
+                <div className="relative" ref={ref}>
+                    <button
+                        onClick={() => setIsOpen(!isOpen)}
+                        disabled={disabled}
+                        className="bg-black/20 border border-red-500/50 rounded-full px-4 py-1.5 text-[10px] font-black text-white/90 uppercase w-48 text-left truncate disabled:opacity-50"
+                    >
+                        {selected || placeholder}
+                    </button>
+                    <AnimatePresence>
+                        {isOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="absolute top-full mt-2 w-48 bg-[#1a0f0f] border border-red-500/50 rounded-lg shadow-lg z-10"
+                            >
+                                {options.map(option => (
+                                    <div
+                                        key={option}
+                                        onClick={() => { onSelect(option); setIsOpen(false); }}
+                                        className="px-4 py-2 text-xs font-bold hover:bg-red-800/50 cursor-pointer"
+                                    >
+                                        {option}
+                                    </div>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            );
+        };
+
+        const TranscriptFeed = ({ transcripts, partialTranscript, sessionState }) => {
+            const feedRef = useRef(null);
+
+            useEffect(() => {
+                if (feedRef.current) {
+                    feedRef.current.scrollTop = feedRef.current.scrollHeight;
+                }
+            }, [transcripts, partialTranscript]);
+
+            return (
+                <main ref={feedRef} className="flex-grow pt-24 pb-10 px-12 overflow-y-auto">
+                    {sessionState === 'idle' && (
+                         <div className="h-full flex flex-col items-center justify-center opacity-30">
+                            <div className="text-4xl font-black uppercase">Engine Ready</div>
+                            <div className="text-xs tracking-[0.4em] uppercase mt-2">Select Student to Begin</div>
+                        </div>
+                    )}
+                    <AnimatePresence>
+                        {transcripts.map((t, i) => <TranscriptRow key={t.timestamp || i} {...t} />)}
+                    </AnimatePresence>
+                     {partialTranscript && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.98, y: 5 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            className="turn-container"
+                        >
+                            <div className="speaker-label">...</div>
+                            <div className="text-xl font-bold italic opacity-60">{partialTranscript}</div>
+                        </motion.div>
+                    )}
+                </main>
+            );
+        };
+
+        const TranscriptRow = ({ speaker, transcript, words }) => (
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="turn-container"
+            >
+                <div className="speaker-label">{speaker}</div>
+                <p className="text-xl font-semibold leading-relaxed">
+                    {words.map((word, i) => <TranscriptWord key={i} word={word} transcript={transcript} />)}
+                </p>
+            </motion.div>
+        );
+
+        const TranscriptWord = ({ word, transcript }) => {
+            const [isMarked, setIsMarked] = useState(false);
+
+            const handleClick = () => {
+                setIsMarked(!isMarked);
+                window.electron.saveCardToSanity({
+                    category: 'RECAST',
+                    detectedTrigger: word.text,
+                    explanation: transcript,
+                });
+            };
+
+            return (
+                <motion.span
+                    whileHover={{ scale: 1.1, y: -3, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                    className={`word-token ${isMarked ? 'marked' : ''}`}
+                    onClick={handleClick}
+                >
+                    {word.text}{' '}
+                </motion.span>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>

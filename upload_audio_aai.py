@@ -271,20 +271,30 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
     try:
         # 1. UPLOAD ONCE
         logger.info("   🔹 Uploading audio file...")
-        upload_url = await asyncio.to_thread(transcriber.upload_file, audio_path)
-        
+        try:
+            upload_url = await asyncio.to_thread(transcriber.upload_file, audio_path)
+        except Exception as e:
+            logger.critical(f"💥 FATAL: Audio upload failed: {e}")
+            return None
+
         # 2. SUBMIT BOTH JOBS
         logger.info("   🔹 Submitting Dual-Pass Transcriptions...")
-        t_diar_task = asyncio.to_thread(transcriber.transcribe, upload_url, config_diar)
-        t_raw_task = asyncio.to_thread(transcriber.transcribe, upload_url, config_raw)
-        
-        t_diar, t_raw = await asyncio.gather(t_diar_task, t_raw_task)
-        
+        try:
+            t_diar_task = asyncio.to_thread(transcriber.transcribe, upload_url, config_diar)
+            t_raw_task = asyncio.to_thread(transcriber.transcribe, upload_url, config_raw)
+            t_diar, t_raw = await asyncio.gather(t_diar_task, t_raw_task)
+        except Exception as e:
+            logger.critical(f"💥 FATAL: Transcription job submission failed: {e}")
+            return None
+
+        # --- VALIDATION ---
         if t_diar.status == aai.TranscriptStatus.error:
-            logger.error(f"❌ Pass 1 Failed: {t_diar.error}")
+            logger.error(f"❌ Pass 1 (Diarization) Failed: {t_diar.error}")
+            # Even if it fails, we might proceed with raw if that's better than nothing.
+            # For now, we'll fail hard.
             return None
         if t_raw.status == aai.TranscriptStatus.error:
-            logger.error(f"❌ Pass 2 Failed: {t_raw.error}")
+            logger.error(f"❌ Pass 2 (Raw Content) Failed: {t_raw.error}")
             return None
 
         logger.info("   ✅ Both passes complete. Merging...")
@@ -316,41 +326,49 @@ async def perform_batch_diarization(audio_path: str, student_name: str) -> Mappi
         # Iterate Raw Words
         raw_words = t_raw.words if t_raw.words else [] # Use the top-level words list from Raw transcript
         
+        # [REVISED] More robust speaker mapping logic
         # Helper to find speaker for a given time range
-        # Simple optimization: keep track of last index
         diar_idx = 0
-        
-        for w in raw_words:
-            w_start = w.start
-            w_end = w.end
+        for i, w in enumerate(raw_words):
+            w_start, w_end = w.start, w.end
             found_speaker: str | None = None
-            
-            # Look ahead in diar_map
-            # We look for ANY overlap.
+
+            # Search for an overlapping speaker tag
             temp_idx = diar_idx
             while temp_idx < len(diar_map):
                 d = diar_map[temp_idx]
-                d_end = float(d['end'])
-                d_start = float(d['start'])
-                
+                d_start, d_end = float(d['start']), float(d['end'])
+
+                # Advance if diarization is behind
                 if d_end < w_start:
-                    # Diarized word ended before this raw word started. Move pointer.
-                    diar_idx = temp_idx # Safe to advance
+                    diar_idx = temp_idx
                     temp_idx += 1
                     continue
+
+                # Break if diarization is too far ahead
                 if d_start > w_end:
-                    # Diarized word starts after this raw word ends. No overlap possible anymore.
                     break
                 
-                # Overlap found!
+                # Overlap found
                 found_speaker = str(d['speaker'])
-                break # Take first overlap
+                break
             
+            # --- Fallback Logic ---
             if not found_speaker:
-                # Fallback: Inherit previous speaker or Unknown
-                found_speaker = current_speaker if current_speaker != "Unknown" else "A" 
-            
-            # Start new turn if speaker changed
+                # If no speaker found, inherit from the previous word's speaker.
+                # This handles cases where diarization might miss a word.
+                if i > 0 and 'speaker' in raw_words[i-1]:
+                    found_speaker = raw_words[i-1]['speaker']
+                    logger.debug(f"      Word '{w.text}' inherited speaker '{found_speaker}'")
+                else:
+                    # For the very first word or unusual cases, default to "A"
+                    found_speaker = "A"
+                    logger.warning(f"      Word '{w.text}' defaulted to speaker 'A'")
+
+            # Attach speaker to the word object itself for robust turn construction
+            w.speaker = found_speaker
+
+            # --- Turn Construction ---
             if found_speaker != current_speaker:
                 if current_words:
                     # Flush previous turn
@@ -662,24 +680,39 @@ async def process_and_upload(audio_path: str, student_name: str, notes: str = ""
     }
 
     try:
+        # --- Incomplete-Proof Downloads ---
+        # We now explicitly check for the presence of data and log if it's missing,
+        # ensuring that a file is always created, even if empty.
+
         # 1. _words.json (Authoritative)
+        words_data = params.get('turns', [])
+        if not words_data:
+            logger.warning("   ⚠️ No 'turns' data found for _words.json. File will be empty.")
         with open(capture_dir / f"{base_filename}_words.json", "w") as f:
-            json.dump(params['turns'], f, indent=2) # Saving full turns structure which contains words
+            json.dump(words_data, f, indent=2)
 
         # 2. _sentences.json
+        sentences_data = params.get('sentences', [])
+        if not sentences_data:
+            logger.warning("   ⚠️ No 'sentences' data found for _sentences.json. File will be empty.")
         with open(capture_dir / f"{base_filename}_sentences.json", "w") as f:
-            json.dump(params['sentences'], f, indent=2)
+            json.dump(sentences_data, f, indent=2)
 
         # 3. _raw.txt
+        raw_text_data = params.get('transcriptText', "")
+        if not raw_text_data:
+            logger.warning("   ⚠️ No 'transcriptText' data found for _raw.txt. File will be empty.")
         with open(capture_dir / f"{base_filename}_raw.txt", "w") as f:
-            f.write(params['transcriptText'])
+            f.write(raw_text_data)
 
         # 4. _diarized.txt
+        diarized_text_data = params.get('punctuatedTranscript', "")
+        if not diarized_text_data:
+            logger.warning("   ⚠️ No 'punctuatedTranscript' data found for _diarized.txt. File will be empty.")
         with open(capture_dir / f"{base_filename}_diarized.txt", "w") as f:
-            f.write(params['punctuatedTranscript'])
+            f.write(diarized_text_data)
 
         # 5. _petty_analysis.json (Local Analysis Metrics)
-        # Renamed to 'petty_analysis' per user instruction for clarity
         with open(capture_dir / f"{base_filename}_petty_analysis.json", "w") as f:
             json.dump(analysis_context, f, indent=2)
 
