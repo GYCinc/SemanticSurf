@@ -27,6 +27,7 @@ from AssemblyAIv2.analyzers.phenomena_matcher import ErrorPhenomenonMatcher
 from AssemblyAIv2.analyzers.preposition_analyzer import PrepositionAnalyzer
 from AssemblyAIv2.analyzers.learner_error_analyzer import LearnerErrorAnalyzer
 from AssemblyAIv2.analyzers.lexical_engine import LexicalEngine
+from AssemblyAIv2.analyzers.fluency_analyzer import FluencyAnalyzer
 
 def run_tiered_analysis(
     student_name: str, 
@@ -130,6 +131,9 @@ def run_tiered_analysis(
     except: pass
 
     # 5. Final Context Construction
+    fluency_analyzer = FluencyAnalyzer()
+    student_words = [w for t in main_analyzer.student_turns_list for w in t.get('words', [])]
+
     analysis_context = {
         "caf_metrics": cast(Dict[str, Any], basic_metrics).get('student_metrics', {}).get('caf_metrics') or "DATA_MISSING",
         "student_metrics": cast(Dict[str, Any], basic_metrics).get('student_metrics', {}),
@@ -138,7 +142,11 @@ def run_tiered_analysis(
         "register_analysis": {"scores": AmalgumAnalyzer().analyze_register(student_text), "classification": AmalgumAnalyzer().get_genre_classification(student_text)},
         "detected_errors": detected_errors,
         "pos_summary": pos_ratios,
-        "lexical_analysis": LexicalEngine().analyze_production([w for t in main_analyzer.student_turns_list for w in t.get('words', [])])
+        "lexical_analysis": LexicalEngine().analyze_production(student_words),
+        "fluency_analysis": {
+            "hesitation": fluency_analyzer.analyze_hesitation(student_words),
+            "articulation_rate": fluency_analyzer.calculate_articulation_rate(student_words)
+        }
     }
     
     logger.info("✅ Tiered Analysis Complete")
