@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Surfer | Crimson Glass</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+        body {
+            background-color: #030303;
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .no-drag { -webkit-app-region: no-drag; }
+        .drag { -webkit-app-region: drag; }
+
+        .app-header {
+            background: rgba(10, 10, 10, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px 0 120px; /* Strong offset for stoplights */
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #eab308;
+            margin-right: 8px;
+        }
+        .status-dot.active { background-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
+
+        .wpm-box {
+            border-left: 1px solid rgba(255,255,255,0.1);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .word-token {
+            display: inline-block;
+            padding: 2px 4px;
+            margin: 0 2px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.05);
+            cursor: pointer;
+        }
+        .word-token.marked { background: rgba(220, 20, 60, 0.4); color: #ff4d4d; }
+
+        .turn-container { margin-bottom: 24px; }
+        .speaker-label { font-weight: 900; font-size: 0.75rem; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="drag app-header">
+        <div class="flex items-center">
+            <div id="connection-status" class="status-dot"></div>
+            <span class="text-[10px] font-black tracking-widest opacity-50">SEMANTIC SURFER</span>
+        </div>
+
+        <div class="no-drag flex items-center gap-6">
+            <select id="student-selector" class="bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-[10px] font-black text-white/90 uppercase outline-none cursor-pointer">
+                <option value="" disabled selected>Loading Students...</option>
+            </select>
+
+            <div class="wpm-box">
+                <span id="wpm-display" class="font-black text-lg">0</span>
+                <span class="text-[7px] font-black opacity-30 uppercase">WPM</span>
+            </div>
+
+            <div class="flex flex-col items-end">
+                <span class="text-[7px] font-black opacity-30 uppercase">Timer</span>
+                <div id="session-timer" class="text-xs font-mono font-bold text-white/60">00:00:00</div>
+            </div>
+
+            <button id="start-btn" class="px-6 py-2 rounded-full bg-red-600/40 hover:bg-red-600/60 text-[10px] font-black uppercase transition-all">Start</button>
+            <button id="end-btn" class="hidden px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase transition-all">End</button>
+            <button onclick="toggleWhiteboard()" class="px-4 py-2 rounded-full bg-blue-600/20 hover:bg-blue-600/40 text-[10px] font-black uppercase transition-all border border-blue-500/30">Whiteboard</button>
+        </div>
+    </div>
+
+    <!-- Whiteboard Pop-over -->
+    <div id="wb-overlay">
+        <div class="wb-toolbar">
+            <div class="wb-title">Shared Canvas</div>
+            <div class="wb-tools">
+                <button class="wb-btn active">✏️</button>
+                <div class="color-picker active" style="background: #fff;" onclick="currentColor='#fff'"></div>
+                <div class="color-picker" style="background: #ef4444;" onclick="currentColor='#ef4444'"></div>
+                <div class="color-picker" style="background: #3b82f6;" onclick="currentColor='#3b82f6'"></div>
+            </div>
+        </div>
+        <div id="wb-canvas-container"></div>
+    </div>
+
+    <div id="transcript-feed" class="absolute inset-0 top-20 px-12 py-10 overflow-y-auto">
+        <div id="empty-msg" class="h-full flex flex-col items-center justify-center opacity-30">
+            <div class="text-4xl font-black uppercase">Engine Ready</div>
+            <div class="text-xs tracking-[0.4em] uppercase mt-2">Select Student to Initialize Bedrock</div>
+        </div>
+    </div>
+
+    <!-- Liveblocks SDK -->
+    <script src="https://unpkg.com/@liveblocks/client"></script>
+    <script src="ui/whiteboard.js"></script>
+    <link rel="stylesheet" href="ui/whiteboard.css">
+
+    <script>
+        const electron = window.electron;
+        const selector = document.getElementById('student-selector');
+        const feed = document.getElementById('transcript-feed');
+        const emptyMsg = document.getElementById('empty-msg');
+        const status = document.getElementById('connection-status');
+        const startBtn = document.getElementById('start-btn');
+        const endBtn = document.getElementById('end-btn');
+        const timerDisplay = document.getElementById('session-timer');
+        const wpmDisplay = document.getElementById('wpm-display');
+
+        let ws = null;
+        let startTime = null;
+        let loadedFromSanity = false;
+
+        async function loadSanityStudents() {
+            try {
+                console.log("Fetching students from Sanity...");
+                const students = await electron.getSanityStudents();
+                if (students && students.length > 0) {
+                    console.log("✅ Loaded students from Sanity:", students);
+                    selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
+                    students.forEach(student => {
+                        const opt = document.createElement('option');
+                        opt.value = student.name;
+                        opt.textContent = student.name;
+                        selector.appendChild(opt);
+                    });
+                    loadedFromSanity = true;
+                } else {
+                    console.warn("⚠️ No students found in Sanity. Keeping existing list if any.");
+                }
+            } catch (e) {
+                console.error("❌ Failed to load students from Sanity:", e);
+            }
+        }
+
+        function connect() {
+            ws = new WebSocket('ws://localhost:8765');
+            ws.onopen = () => {
+                status.classList.add('active');
+                console.log('✅ Connected');
+                // We don't ask backend for students if we expect Sanity,
+                // but backend sends it anyway on connect.
+                // ws.send(JSON.stringify({ message_type: 'get_students' }));
+            };
+            ws.onclose = () => {
+                status.classList.remove('active');
+                setTimeout(connect, 2000);
+            };
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                console.log('Message:', data.message_type);
+
+                if (data.message_type === 'student_list' && data.students) {
+                    if (!loadedFromSanity) {
+                        console.log("Using backend student list (Sanity failed or empty)");
+                        selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
+                        data.students.forEach(name => {
+                            const opt = document.createElement('option');
+                            opt.value = name; opt.textContent = name;
+                            selector.appendChild(opt);
+                        });
+                    } else {
+                        console.log("Ignoring backend student list (Sanity loaded)");
+                    }
+                } else if (data.message_type === 'session_start') {
+                    startTime = new Date();
+                    emptyMsg.style.display = 'none';
+                    startBtn.classList.add('hidden');
+                    endBtn.classList.remove('hidden');
+                    setInterval(() => {
+                        if (!startTime) return;
+                        const d = new Date() - startTime;
+                        timerDisplay.textContent = new Date(d).toISOString().substr(11, 8);
+                    }, 1000);
+                } else if (data.message_type === 'transcript') {
+                    const div = document.createElement('div');
+                    div.className = 'turn-container';
+                    div.innerHTML = `<div class="speaker-label">${data.speaker}</div><div class="text-xl font-bold"></div>`;
+                    const content = div.querySelector('.text-xl');
+                    if (data.words) {
+                        data.words.forEach(w => {
+                            const span = document.createElement('span');
+                            span.className = 'word-token';
+                            span.textContent = w.text;
+                            span.onclick = () => {
+                                span.classList.toggle('marked');
+                                electron.saveCardToSanity({ category: 'RECAST', detectedTrigger: w.text, explanation: data.transcript });
+                            };
+                            content.appendChild(span);
+                        });
+                    } else { content.textContent = data.transcript; }
+                    feed.appendChild(div);
+                    feed.scrollTop = feed.scrollHeight;
+                } else if (data.wpm) {
+                    wpmDisplay.textContent = Math.round(data.wpm);
+                }
+            };
+        }
+
+        startBtn.onclick = () => {
+            if (!selector.value) return alert('Select Student');
+            ws.send(JSON.stringify({ message_type: 'start_session', student_name: selector.value }));
+        };
+        endBtn.onclick = () => ws.send(JSON.stringify({ message_type: 'end_session' }));
+
+        loadSanityStudents();
+        connect();
+    </script>
+</body>
+</html>
