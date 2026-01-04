@@ -72,8 +72,7 @@ from assemblyai.streaming.v3 import (
 # --- CONFIG & ANALYZERS (Lazy Loaded) ---
 from analyzers.llm_gateway import run_llm_gateway_query
 from upload_audio_aai import (
-    process_and_upload,
-    get_existing_students
+    process_and_upload
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
