@@ -1,237 +1,415 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Semantic Surfer | Crimson Glass</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Semantic Server Dashboard - Premium</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<!-- React & Framer Motion Setup -->
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/framer-motion@10.16.4/dist/framer-motion.umd.min.js"></script>
+<!-- Liveblocks SDK for Whiteboard -->
+<script src="https://unpkg.com/@liveblocks/client"></script>
+<link rel="stylesheet" href="ui/whiteboard.css">
 
-        body {
-            background-color: #030303;
-            color: #FFFFFF;
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            overflow: hidden;
+
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#f97316", // Orange-500, visible in both modes
+                        "background-light": "#fff7ed", // Orange-50
+                        "background-dark": "#0f0502", // Very dark orange/black
+                        glass: {
+                            light: "rgba(255, 255, 255, 0.25)",
+                            dark: "rgba(0, 0, 0, 0.3)",
+                            border: "rgba(255, 255, 255, 0.3)",
+                            highlight: "rgba(255, 255, 255, 0.5)",
+                        }
+                    },
+                    fontFamily: {
+                        display: ["'Plus Jakarta Sans'", "sans-serif"],
+                        body: ["'Plus Jakarta Sans'", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                        '3xl': "1.5rem",
+                    },
+                    boxShadow: {
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.25)',
+                        'glass-inset': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.3)',
+                        'glass-deep': '0 20px 40px -10px rgba(0,0,0,0.5)',
+                        'glow': '0 0 20px rgba(249, 115, 22, 0.4)',
+                    },
+                    backdropBlur: {
+                        'xs': '2px',
+                    }
+                },
+            },
+        };
+    </script>
+<style>body {background: radial-gradient(circle at 50% 0%, #ea580c 0%, #9a3412 40%, #431407 80%, #0f0502 100%);
+            min-height: 100vh;
+            color: white;
             -webkit-font-smoothing: antialiased;
         }
-
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.4);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow:
+                0 4px 30px rgba(0, 0, 0, 0.1),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        .glass-panel-deep {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.05);
+        }.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }@keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 5px #22c55e, 0 0 10px #22c55e; }
+            50% { box-shadow: 0 0 2px #22c55e, 0 0 5px #22c55e; }
+        }
+        .status-dot {
+            animation: pulse-glow 2s infinite;
+        }.text-gradient {
+            background: linear-gradient(to bottom, #ffffff, #fed7aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
         .no-drag { -webkit-app-region: no-drag; }
         .drag { -webkit-app-region: drag; }
-
-        .app-header {
-            background: rgba(10, 10, 10, 0.95);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            height: 64px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 32px 0 120px; /* Strong offset for stoplights */
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 100;
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background-color: #eab308;
-            margin-right: 8px;
-        }
-        .status-dot.active { background-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
-
-        .wpm-box {
-            border-left: 1px solid rgba(255,255,255,0.1);
-            border-right: 1px solid rgba(255,255,255,0.1);
-            padding: 0 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .word-token {
-            display: inline-block;
-            padding: 2px 4px;
-            margin: 0 2px;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.05);
-            cursor: pointer;
-        }
-        .word-token.marked { background: rgba(220, 20, 60, 0.4); color: #ff4d4d; }
-
-        .turn-container { margin-bottom: 24px; }
-        .speaker-label { font-weight: 900; font-size: 0.75rem; color: #888; text-transform: uppercase; margin-bottom: 4px; }
-
     </style>
 </head>
-<body>
+<body class="font-display antialiased selection:bg-orange-500 selection:text-white">
 
-    <div class="drag app-header">
-        <div class="flex items-center">
-            <div id="connection-status" class="status-dot"></div>
-            <span class="text-[10px] font-black tracking-widest opacity-50">SEMANTIC SURFER</span>
-        </div>
-        
-        <div class="no-drag flex items-center gap-6">
-            <select id="student-selector" class="bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-[10px] font-black text-white/90 uppercase outline-none cursor-pointer">
-                <option value="" disabled selected>Loading Students...</option>
-            </select>
+    <div id="root"></div>
 
-            <div class="wpm-box">
-                <span id="wpm-display" class="font-black text-lg">0</span>
-                <span class="text-[7px] font-black opacity-30 uppercase">WPM</span>
-            </div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
 
-            <div class="flex flex-col items-end">
-                <span class="text-[7px] font-black opacity-30 uppercase">Timer</span>
-                <div id="session-timer" class="text-xs font-mono font-bold text-white/60">00:00:00</div>
-            </div>
+        // Guard against Framer Motion not loading
+        if (!window.framerMotion) {
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(React.createElement('div', { className: 'text-white text-center p-8 text-lg' }, 'Loading Animation Engine...'));
+        } else {
+            const { motion, AnimatePresence } = window.framerMotion;
 
-            <button id="start-btn" class="px-6 py-2 rounded-full bg-red-600/40 hover:bg-red-600/60 text-[10px] font-black uppercase transition-all">Start</button>
-            <button id="end-btn" class="hidden px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase transition-all">End</button>
-            <button onclick="toggleWhiteboard()" class="px-4 py-2 rounded-full bg-blue-600/20 hover:bg-blue-600/40 text-[10px] font-black uppercase transition-all border border-blue-500/30">Whiteboard</button>
-        </div>
-    </div>
+        //================================================================================
+        // WebSocket and State Management Hook
+        //================================================================================
+        const useSemanticSocket = () => {
+            const [isConnected, setIsConnected] = useState(false);
+            const [students, setStudents] = useState([]);
+            const [sessionStatus, setSessionStatus] = useState('idle'); // idle, active, ended
+            const [transcript, setTranscript] = useState([]);
+            const [markedItems, setMarkedItems] = useState([]);
+            const ws = useRef(null);
 
-    <!-- Whiteboard Pop-over -->
-    <div id="wb-overlay">
-        <div class="wb-toolbar">
-            <div class="wb-title">Shared Canvas</div>
-            <div class="wb-tools">
-                <button class="wb-btn active">✏️</button>
-                <div class="color-picker active" style="background: #fff;" onclick="currentColor='#fff'"></div>
-                <div class="color-picker" style="background: #ef4444;" onclick="currentColor='#ef4444'"></div>
-                <div class="color-picker" style="background: #3b82f6;" onclick="currentColor='#3b82f6'"></div>
-            </div>
-        </div>
-        <div id="wb-canvas-container"></div>
-    </div>
-
-    <div id="transcript-feed" class="absolute inset-0 top-20 px-12 py-10 overflow-y-auto">
-        <div id="empty-msg" class="h-full flex flex-col items-center justify-center opacity-30">
-            <div class="text-4xl font-black uppercase">Engine Ready</div>
-            <div class="text-xs tracking-[0.4em] uppercase mt-2">Select Student to Initialize Bedrock</div>
-        </div>
-    </div>
-
-    <!-- Liveblocks SDK -->
-    <script src="https://unpkg.com/@liveblocks/client"></script>
-    <script src="ui/whiteboard.js"></script>
-    <link rel="stylesheet" href="ui/whiteboard.css">
-
-    <script>
-        const electron = window.electron;
-        const selector = document.getElementById('student-selector');
-        const feed = document.getElementById('transcript-feed');
-        const emptyMsg = document.getElementById('empty-msg');
-        const status = document.getElementById('connection-status');
-        const startBtn = document.getElementById('start-btn');
-        const endBtn = document.getElementById('end-btn');
-        const timerDisplay = document.getElementById('session-timer');
-        const wpmDisplay = document.getElementById('wpm-display');
-
-        let ws = null;
-        let startTime = null;
-        let loadedFromSanity = false;
-
-        async function loadSanityStudents() {
-            try {
-                console.log("Fetching students from Sanity...");
-                const students = await electron.getSanityStudents();
-                if (students && students.length > 0) {
-                    console.log("✅ Loaded students from Sanity:", students);
-                    selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
-                    students.forEach(student => {
-                        const opt = document.createElement('option');
-                        opt.value = student.name; 
-                        opt.textContent = student.name;
-                        selector.appendChild(opt);
-                    });
-                    loadedFromSanity = true;
-                } else {
-                    console.warn("⚠️ No students found in Sanity. Keeping existing list if any.");
-                }
-            } catch (e) {
-                console.error("❌ Failed to load students from Sanity:", e);
-            }
-        }
-
-        function connect() {
-            ws = new WebSocket('ws://localhost:8765');
-            ws.onopen = () => {
-                status.classList.add('active');
-                console.log('✅ Connected');
-                // We don't ask backend for students if we expect Sanity, 
-                // but backend sends it anyway on connect.
-                // ws.send(JSON.stringify({ message_type: 'get_students' }));
-            };
-            ws.onclose = () => {
-                status.classList.remove('active');
-                setTimeout(connect, 2000);
-            };
-            ws.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                console.log('Message:', data.message_type);
-                
-                if (data.message_type === 'student_list' && data.students) {
-                    if (!loadedFromSanity) {
-                        console.log("Using backend student list (Sanity failed or empty)");
-                        selector.innerHTML = '<option value="" disabled selected>Select Student</option>';
-                        data.students.forEach(name => {
-                            const opt = document.createElement('option');
-                            opt.value = name; opt.textContent = name;
-                            selector.appendChild(opt);
-                        });
-                    } else {
-                        console.log("Ignoring backend student list (Sanity loaded)");
+            const connect = useCallback(() => {
+                ws.current = new WebSocket('ws://localhost:8765');
+                ws.current.onopen = () => setIsConnected(true);
+                ws.current.onclose = () => {
+                    setIsConnected(false);
+                    setTimeout(connect, 2000);
+                };
+                ws.current.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    switch (data.message_type) {
+                        case 'student_list':
+                            // Simulating sanity load for now
+                            // setStudents(data.students);
+                            break;
+                        case 'session_start':
+                            setSessionStatus('active');
+                            setTranscript([]);
+                            setMarkedItems([]);
+                            break;
+                        case 'transcript':
+                             setTranscript(prev => [...prev, {...data, id: Date.now()}]);
+                            break;
                     }
-                } else if (data.message_type === 'session_start') {
-                    startTime = new Date();
-                    emptyMsg.style.display = 'none';
-                    startBtn.classList.add('hidden');
-                    endBtn.classList.remove('hidden');
-                    setInterval(() => {
-                        if (!startTime) return;
-                        const d = new Date() - startTime;
-                        timerDisplay.textContent = new Date(d).toISOString().substr(11, 8);
-                    }, 1000);
-                } else if (data.message_type === 'transcript') {
-                    const div = document.createElement('div');
-                    div.className = 'turn-container';
-                    div.innerHTML = `<div class="speaker-label">${data.speaker}</div><div class="text-xl font-bold"></div>`;
-                    const content = div.querySelector('.text-xl');
-                    if (data.words) {
-                        data.words.forEach(w => {
-                            const span = document.createElement('span');
-                            span.className = 'word-token';
-                            span.textContent = w.text;
-                            span.onclick = () => {
-                                span.classList.toggle('marked');
-                                electron.saveCardToSanity({ category: 'RECAST', detectedTrigger: w.text, explanation: data.transcript });
-                            };
-                            content.appendChild(span);
-                        });
-                    } else { content.textContent = data.transcript; }
-                    feed.appendChild(div);
-                    feed.scrollTop = feed.scrollHeight;
-                } else if (data.wpm) {
-                    wpmDisplay.textContent = Math.round(data.wpm);
-                }
+                };
+            }, []);
+
+            useEffect(() => {
+                connect();
+                window.electron?.getSanityStudents().then(sanityStudents => {
+                    if (sanityStudents && sanityStudents.length > 0) {
+                        setStudents(sanityStudents.map(s => s.name));
+                    } else {
+                        // Fallback to a default list if Sanity fails
+                        setStudents(['Default Student 1', 'Default Student 2']);
+                    }
+                });
+                return () => ws.current?.close();
+            }, [connect]);
+
+            const startSession = (studentName) => {
+                if (!studentName) return alert('Please select a student.');
+                ws.current?.send(JSON.stringify({ message_type: 'start_session', student_name: studentName }));
             };
+
+            const endSession = () => {
+                ws.current?.send(JSON.stringify({ message_type: 'end_session' }));
+                setSessionStatus('idle');
+            };
+
+            return { isConnected, students, sessionStatus, transcript, markedItems, startSession, endSession };
+        };
+
+        //================================================================================
+        // Main App Component
+        //================================================================================
+        function App() {
+            const socketState = useSemanticSocket();
+            const [showWhiteboard, setShowWhiteboard] = useState(false);
+            const [selectedStudent, setSelectedStudent] = useState('');
+
+            return (
+                <div className="p-4 md:p-8 flex flex-col h-screen overflow-hidden">
+                    <Header {...socketState} onStudentSelect={setSelectedStudent} onToggleWhiteboard={() => setShowWhiteboard(p => !p)} />
+                    <MainContent {...socketState} />
+                    <AnimatePresence>
+                        {showWhiteboard && <Whiteboard studentId={selectedStudent} onClose={() => setShowWhiteboard(false)} />}
+                    </AnimatePresence>
+                </div>
+            );
         }
 
-        startBtn.onclick = () => {
-            if (!selector.value) return alert('Select Student');
-            ws.send(JSON.stringify({ message_type: 'start_session', student_name: selector.value }));
-        };
-        endBtn.onclick = () => ws.send(JSON.stringify({ message_type: 'end_session' }));
+        //================================================================================
+        // Header Component
+        //================================================================================
+        const Header = ({ isConnected, students, sessionStatus, startSession, endSession, onStudentSelect, onToggleWhiteboard }) => {
+            const [localSelectedStudent, setLocalSelectedStudent] = useState('');
+            const spring = { type: "spring", stiffness: 300, damping: 20 };
 
-        loadSanityStudents();
-        connect();
+            const handleSelect = (e) => {
+                setLocalSelectedStudent(e.target.value);
+                onStudentSelect(e.target.value);
+            }
+
+            return (
+                <motion.nav
+                    initial={{ y: -100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={spring}
+                    className="glass-panel rounded-2xl px-6 py-3 flex items-center justify-between mb-6 shadow-glass z-20 shrink-0 drag"
+                >
+                     <div className="flex items-center gap-6">
+                        {/* ... Logo and Title ... */}
+                        <div className="flex items-center gap-3">
+                            <motion.div
+                                animate={{ rotate: [0, 10, -10, 0] }}
+                                transition={{ duration: 1, ease: "easeInOut", repeat: Infinity, repeatDelay: 3 }}
+                                className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.5)] border border-white/20">
+                                <span className="material-icons-round text-white text-2xl">graphic_eq</span>
+                            </motion.div>
+                            <h1 className="text-2xl font-bold tracking-tight text-gradient drop-shadow-sm">Semantic Server</h1>
+                        </div>
+                        <StatusIndicator isConnected={isConnected} />
+                    </div>
+
+                    <div className="flex items-center gap-3 mx-4 no-drag">
+                        <StudentSelector students={students} onSelect={handleSelect} disabled={sessionStatus === 'active'} />
+                        <AnimatePresence mode="wait">
+                        {sessionStatus !== 'active' ? (
+                            <motion.button
+                                key="start"
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                transition={spring}
+                                onClick={() => startSession(localSelectedStudent)} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-b from-orange-500 to-orange-700 border-t border-orange-300/40 border-b border-orange-900/40 shadow-[0_4px_12px_rgba(234,88,12,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_4px_20px_rgba(234,88,12,0.5)]">
+                                <span className="material-icons-round text-white text-sm drop-shadow-md">play_arrow</span>
+                                <span className="text-xs font-bold text-white tracking-wider uppercase drop-shadow-md">Start</span>
+                            </motion.button>
+                        ) : (
+                            <motion.button
+                                key="end"
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                transition={spring}
+                                onClick={endSession} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-950/40 border border-orange-500/10 hover:bg-red-950/50 hover:border-red-500/30 group shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                                <span className="material-icons-round text-orange-200/60 group-hover:text-red-200/80 transition-colors text-sm">stop_circle</span>
+                                <span className="text-xs font-bold text-orange-200/60 group-hover:text-red-200/80 tracking-wider uppercase transition-colors">End Session</span>
+                            </motion.button>
+                        )}
+                        </AnimatePresence>
+                         <motion.button whileHover={{scale:1.05}} whileTap={{scale:0.95}} onClick={onToggleWhiteboard} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-950/40 border border-sky-500/20 hover:bg-sky-900/50 group shadow-sm">
+                            <span className="material-icons-round text-sky-300 text-sm">draw</span>
+                        </motion.button>
+                    </div>
+
+                    <div className="flex items-center gap-3 no-drag">
+                        {/* Action buttons */}
+                    </div>
+                </motion.nav>
+            );
+        };
+        const StudentSelector = ({ students, onSelect, disabled }) => ( <div className="relative group w-64"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="material-icons-round text-orange-200/40 group-focus-within:text-orange-100 transition-colors text-lg">search</span></div><select onChange={onSelect} disabled={disabled} className="w-full bg-orange-950/30 hover:bg-orange-900/30 border border-orange-500/20 rounded-lg pl-9 pr-3 py-2 text-xs font-medium text-orange-50 placeholder-orange-200/30 focus:outline-none focus:border-orange-400/40 focus:bg-orange-900/40 transition-all cursor-pointer shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed appearance-none"><option value="" disabled selected>Select Student...</option>{students.map(name => <option key={name} value={name}>{name}</option>)}</select></div>);
+
+        //================================================================================
+        // Whiteboard Component
+        //================================================================================
+        const Whiteboard = ({ studentId, onClose }) => {
+            const canvasRef = useRef(null);
+            const roomRef = useRef(null);
+            const [color, setColor] = useState("#FFF");
+
+            useEffect(() => {
+                if (!studentId) {
+                    alert("Select a student to use the whiteboard.");
+                    onClose();
+                    return;
+                }
+                const { createClient } = window.Liveblocks;
+                const client = createClient({ publicApiKey: "pk_dev_qGuV2VvEXcKEiH93Uw_jkCdM5QIo6r7I3XBb_EjFOMJQMgmScBWSGvOdzAzX_zAd" });
+                const room = client.enter(`semantic-surfer-wb-${studentId}`);
+                roomRef.current = room;
+
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext("2d");
+                let isDrawing = false;
+                
+                const handleResize = () => {
+                    canvas.width = canvas.parentElement.clientWidth;
+                    canvas.height = canvas.parentElement.clientHeight;
+                };
+                handleResize();
+                window.addEventListener('resize', handleResize);
+
+                const getPoint = e => ({ x: e.clientX - canvas.getBoundingClientRect().left, y: e.clientY - canvas.getBoundingClientRect().top });
+
+                const onPointerDown = e => {
+                    isDrawing = true;
+                    const pt = getPoint(e);
+                    room.broadcastEvent({ type: "DRAW_START", pt, color });
+                    ctx.beginPath();
+                    ctx.moveTo(pt.x, pt.y);
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                };
+                const onPointerMove = e => {
+                    if (!isDrawing) return;
+                    const pt = getPoint(e);
+                    room.broadcastEvent({ type: "DRAW_MOVE", pt });
+                    ctx.lineTo(pt.x, pt.y);
+                    ctx.stroke();
+                };
+                const onPointerUp = () => isDrawing = false;
+
+                canvas.addEventListener("pointerdown", onPointerDown);
+                canvas.addEventListener("pointermove", onPointerMove);
+                canvas.addEventListener("pointerup", onPointerUp);
+
+                const unsubscribe = room.subscribe("event", ({ event }) => {
+                    if (event.type === "DRAW_START") {
+                        ctx.beginPath();
+                        ctx.moveTo(event.pt.x, event.pt.y);
+                        ctx.strokeStyle = event.color;
+                        ctx.lineWidth = 2;
+                    } else if (event.type === "DRAW_MOVE") {
+                        ctx.lineTo(event.pt.x, event.pt.y);
+                        ctx.stroke();
+                    }
+                });
+
+                return () => {
+                    window.removeEventListener('resize', handleResize);
+                    canvas.removeEventListener("pointerdown", onPointerDown);
+                    canvas.removeEventListener("pointermove", onPointerMove);
+                    canvas.removeEventListener("pointerup", onPointerUp);
+                    unsubscribe();
+                    client.leave(`semantic-surfer-wb-${studentId}`);
+                };
+            }, [studentId, color]);
+
+            return (
+                <motion.div initial={{opacity:0, scale:0.9}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.9}} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
+                    <div className="w-3/4 h-3/4 glass-panel rounded-2xl shadow-lg flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="wb-toolbar">
+                            <h3 className="text-sm font-bold text-white/70 uppercase">Shared Canvas</h3>
+                            <div className="flex gap-2">
+                                {["#FFF", "#F00", "#0F0", "#00F"].map(c => <div key={c} onClick={() => setColor(c)} style={{background:c}} className={`w-6 h-6 rounded-full cursor-pointer ${c===color ? 'ring-2 ring-white' : ''}`} />)}
+                            </div>
+                            <button onClick={onClose} className="text-white/50 hover:text-white">&times;</button>
+                        </div>
+                        <div className="flex-1 relative">
+                            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+                        </div>
+                    </div>
+                </motion.div>
+            );
+        };
+        const StatusIndicator = ({ isConnected }) => ( <div className="glass-panel-deep px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 bg-black/20"><div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 status-dot' : 'bg-yellow-500'}`}></div><span className={`text-xs font-semibold ${isConnected ? 'text-green-400' : 'text-yellow-400'} tracking-wider uppercase`}>{isConnected ? 'Online' : 'Connecting...'}</span></div>);
+        const MainContent = ({ sessionStatus, transcript, markedItems }) => { /* ... */ return ( <main className="flex-1 grid grid-cols-12 gap-6 min-h-0"><motion.div initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 25, delay: 0.2 }} className="col-span-12 lg:col-span-8 flex flex-col gap-6 min-h-0"><TranscriptPanel sessionStatus={sessionStatus} transcript={transcript} /></motion.div><motion.div initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 25, delay: 0.3 }} className="col-span-12 lg:col-span-4 h-full min-h-0"><MarkedItemsPanel items={markedItems} /></motion.div></main> ); }
+        const TranscriptPanel = ({ sessionStatus, transcript }) => { /* ... */ return ( <><div className="glass-panel flex-1 rounded-3xl p-8 shadow-glass relative overflow-hidden flex flex-col group"><AnimatePresence mode="wait">{sessionStatus === 'idle' ? <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><WaitingMessage /></motion.div> : <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full"><TranscriptFeed transcript={transcript} /></motion.div>}</AnimatePresence></div><NotesPanel /></> ) }
+        const WaitingMessage = () => ( <div className="m-auto relative z-10 w-full flex flex-col items-center justify-center gap-6"><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-orange-500/20 blur-[100px] rounded-full pointer-events-none"></div><div className="text-center space-y-2"><motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7]}} transition={{ duration: 2, ease: "easeInOut", repeat: Infinity }} className="w-16 h-16 mx-auto rounded-full border border-white/10 flex items-center justify-center bg-white/5 mb-4 shadow-[0_0_15px_rgba(255,255,255,0.1)]"><span className="material-icons-round text-white/40 text-3xl">mic_none</span></motion.div><h2 className="text-xl font-medium text-white/90 tracking-wide">Waiting for audio stream...</h2><p className="text-sm text-white/40 font-light">System is ready. Initiate input to begin analysis.</p></div></div> );
+        const TranscriptFeed = ({ transcript }) => {
+            const feedRef = useRef(null);
+            useEffect(() => {
+                feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' });
+            }, [transcript]);
+
+            return (
+                <div ref={feedRef} className="overflow-y-auto h-full no-scrollbar">
+                    <AnimatePresence>
+                        {transcript.map((item) => (
+                            <motion.div key={item.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }} className="mb-6">
+                                <p className="text-sm font-bold text-orange-200/50 mb-1">{item.speaker}</p>
+                                <p className="text-lg text-white/90 leading-relaxed">
+                                    {item.transcript.split(' ').map((word, i) => (
+                                        <motion.span
+                                            key={i}
+                                            className="inline-block mr-1.5"
+                                            whileHover={{ scale: 1.1, y: -2 }}
+                                            transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+                                        >
+                                            {word}
+                                        </motion.span>
+                                    ))}
+                                </p>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
+            )
+        }
+        const NotesPanel = () => ( <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 25, delay: 0.4 }} className="glass-panel h-48 rounded-3xl p-6 shadow-glass flex flex-col shrink-0"><div className="flex justify-between items-center mb-4"><h3 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2"><span className="material-icons-round text-sm">edit_note</span> Notes</h3><span className="text-xs text-white/30">Auto-saved</span></div><div className="flex-1 glass-panel-deep rounded-xl p-4 relative transition-all focus-within:ring-1 focus-within:ring-white/20"><textarea className="w-full h-full bg-transparent border-none resize-none focus:ring-0 text-white placeholder-white/30 text-sm leading-relaxed" placeholder="Type session notes here..."></textarea><motion.button whileHover={{scale: 1.1}} whileTap={{scale:0.9}} className="absolute bottom-3 right-3 p-2 rounded-lg bg-primary hover:bg-orange-600 text-white shadow-lg"><span className="material-icons-round text-sm block">send</span></motion.button></div></motion.div>)
+        const MarkedItemsPanel = ({ items = [] }) => { const staticItems = [ { id: 1, type: 'Keyword', color: 'emerald', time: '00:14', text: '"Semantic optimization"' }, { id: 2, type: 'Critical', color: 'red', time: '02:45', text: 'Customer mentioned cancellation risk.' } ]; const displayItems = items.length > 0 ? items : staticItems; return ( <div className="glass-panel h-full rounded-3xl p-1 flex flex-col shadow-glass overflow-hidden"><div className="p-5 pb-2 border-b border-white/10"><h3 className="text-lg font-bold text-white tracking-wide">Marked Items</h3><p className="text-xs text-white/40 font-light">AI generated insights &amp; user flags</p></div><div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar"><AnimatePresence>{displayItems.map((item) => ( <motion.div key={item.id} layout initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }}><MarkedItem {...item} /></motion.div> ))}</AnimatePresence></div><div className="p-4 border-t border-white/10 bg-white/5"><motion.button whileHover={{scale:1.03}} whileTap={{scale:0.97}} className="w-full py-2 rounded-lg border border-white/20 bg-white/5 text-xs font-semibold text-white/70 hover:bg-white/10 hover:text-white transition-colors uppercase tracking-widest">Export Report</motion.button></div></div> ); }
+        const MarkedItem = ({ type, color, time, text }) => { const colors = { emerald: { text: 'text-emerald-300', bg: 'bg-emerald-500/20', border: 'border-emerald-500/20', gradient: 'from-emerald-900/40 to-emerald-800/20', hover: 'hover:bg-emerald-900/50' }, red: { text: 'text-red-300', bg: 'bg-red-500/20', border: 'border-red-500/20', gradient: 'from-red-900/40 to-orange-900/20', hover: 'hover:bg-red-900/50' } }; const c = colors[color] || colors.emerald; return (<motion.div whileHover={{ scale: 1.03, y: -2 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }} className={`group relative overflow-hidden rounded-xl border border-white/5 ${c.gradient} p-3 ${c.hover} transition-all cursor-pointer`}><div className="flex justify-between items-start mb-1"><span className={`text-[10px] font-bold uppercase tracking-wider ${c.text} ${c.bg} px-2 py-0.5 rounded-full ${c.border}`}>{type}</span><span className={`text-[10px] ${c.text}/50`}>{time}</span></div><p className={`text-sm ${c.text} font-medium`}>{text}</p></motion.div>) }
+
+
+        //================================================================================
+        // Render the App
+        //================================================================================
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+        }
     </script>
+    <div class="fixed inset-0 pointer-events-none opacity-[0.03] z-50 mix-blend-overlay" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDNl3_DqT-ELD6b3RK1kCGhfK8EJki5FtAqnmXoXNcIghL8O6g5O2CMQ6UiXJHhEf1h85GFQbRuZhEJvlErqReUSP29jENFSEYTcvwBmlZfJYdVy0JD-yjWhdYhzi_mdakKxzDXwXpYxw7k-s5kRiRf2zRj5-uM2gI2E9pEFAg5G2elDgS8bvjoq9UeXsC6ni-Uh8lQzvSXDoTtM0jFM7yoRpazOPb9ROwarBJ-jk8JbpJgeNgOUUHskpQs1cfO5Sn7gEz5XihZ4ng');"></div>
 </body>
 </html>
